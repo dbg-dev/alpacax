@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier. Do not edit manually.
+_commit: v0.2.25
+_src_path: gh:jlevy/simple-modern-uv
+package_author_email: minky.raccoon@pm.me
+package_author_name: minky.raccoon
+package_description: changeme
+package_github_org: dbg-dev
+package_module: alpacax
+package_name: alpacax
