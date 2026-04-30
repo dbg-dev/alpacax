@@ -13,12 +13,16 @@ authors = [
 ]
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
 dynamic = ["version"]
 
 # ---- Main dependencies ----
 
 dependencies = [
+    "pydantic>=2.13.3",
+    "requests>=2.33.1",
+    "returns>=0.27.0",
+    "tyro>=1.0.13",
 ]
 
 
@@ -37,7 +41,7 @@ dev = [
 
 [project.scripts]
 # Add script entry points here:
-alpacax = "alpacax:main"
+load = "alpacax.cli.load:main"
 
 
 # ---- Build system ----

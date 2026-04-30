@@ -1,10 +1,23 @@
 # alpacax
 
-👉\[\[\[**This is the initial readme for your
-[simple-modern-uv](https://github.com/jlevy/simple-modern-uv) template.** Fill it in and
-delete this message!
-Below are general setup instructions that you may remove or keep and adapt for your
-project.\]\]\]
+
+## Alpaca Dataset Pipeline
+
+Fetches, validates, formats, tokenizes, masks, pads, and splits an Alpaca-format
+instruction dataset using a railway-oriented Result pattern for error handling.
+
+Python: 3.12+
+Dependencies: pip install requests pydantic returns
+
+Design goals
+
+- Keep I/O at the boundary and make transformations independently testable.
+- Validate remote data shape before running the pipeline.
+- Avoid unbounded padding by using a configurable maximum sequence length.
+- Support either truncating long samples or skipping them with recorded reasons.
+- Mask prompt labels by default for causal-LM instruction fine-tuning.
+- Return partial success with skipped row errors whenever possible.
+
 
 * * *
 

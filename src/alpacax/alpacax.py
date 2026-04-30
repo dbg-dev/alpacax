@@ -1,7 +1,4 @@
-# TODO: Add code!
-def main():
-    pass
-
+from alpacax.cli.load import main
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
