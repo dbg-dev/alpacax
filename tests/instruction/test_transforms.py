@@ -107,4 +107,3 @@ def test_split_samples_accounts_for_all_items():
         samples = list(range(n))
         result = split_samples(samples, skipped=None, weights=weights)
         assert len(result.train) + len(result.validation) + len(result.test) == n
-

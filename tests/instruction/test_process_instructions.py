@@ -95,4 +95,3 @@ def test_process_instructions_annotates_error_with_correct_row_index():
     assert isinstance(errors[0], RowError)
     assert errors[0].row_index == 1
     assert errors[0].error is error
-

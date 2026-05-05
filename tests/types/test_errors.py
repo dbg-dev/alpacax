@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from pydantic import BaseModel, ValidationError
 from pydantic_core import InitErrorDetails, PydanticCustomError
 from returns.result import Failure, Success
@@ -54,8 +55,9 @@ def test_annotate_failure_does_not_double_wrap_row_error():
     result = annotate_failure(Failure(original), row_index=9)
 
     row_error = result.failure()
-    assert row_error is original          # returned as-is
-    assert row_error.row_index == 1       # original index preserved, not 9
+    assert row_error is original  # returned as-is
+    assert row_error.row_index == 1  # original index preserved, not 9
+
 
 ## format errors
 

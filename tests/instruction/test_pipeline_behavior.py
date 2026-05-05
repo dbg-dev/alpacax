@@ -41,11 +41,7 @@ def test_process_instructions_processes_valid_rows_and_reports_invalid_rows():
     assert len(samples) == 2
     assert len(errors) == 2
 
-    assert [
-        error.row_index
-        for error in errors
-        if isinstance(error, RowError)
-    ] == [1, 3]
+    assert [error.row_index for error in errors if isinstance(error, RowError)] == [1, 3]
 
     for sample in samples:
         assert len(sample.input_ids) == config.max_seq_len - 1
@@ -87,8 +83,6 @@ def test_processed_samples_are_split_without_dropping_or_duplicating_rows():
     assert len(split.test) == 1
 
     assert len(all_split_samples) == len(samples)
-    assert {id(sample) for sample in all_split_samples} == {
-        id(sample) for sample in samples
-    }
+    assert {id(sample) for sample in all_split_samples} == {id(sample) for sample in samples}
 
     assert len(split.skipped or []) == 1

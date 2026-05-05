@@ -131,6 +131,7 @@ def test_tokenize_sample_empty_response_becomes_valid_with_eos():
 
 ## call order
 
+
 def test_tokenize_sample_call_order():
     tokenizer = Mock()
     tokenizer.encode.side_effect = [[1], [2]]

@@ -19,4 +19,3 @@ def test_split_config_validates_weights():
 
     with pytest.raises(ValidationError, match="Input should be greater than or equal to 0"):
         SplitConfig(train=0.5, val=0.4, test=-0.0001)
-
