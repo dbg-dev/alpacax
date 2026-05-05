@@ -66,7 +66,7 @@ def split_samples[T, U](
 ) -> DatasetSplit[T, U]:
     n = len(samples)
     train_end = round(n * weights.train)
-    validation_end = n - round(n * weights.test) # derive from test, not val
+    validation_end = n - round(n * weights.test)  # derive from test, not val
 
     return DatasetSplit[T, U](
         train=samples[:train_end],
