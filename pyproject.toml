@@ -7,7 +7,7 @@ Repository = "https://github.com/dbg-dev/alpacax"
 
 [project]
 name = "alpacax"
-description = "changeme"
+description = "Composable functional training infrastructure for JAX and Flax."
 authors = [
     { name="minky.raccoon", email="minky.raccoon@pm.me" },
 ]
