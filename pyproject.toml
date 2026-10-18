@@ -20,12 +20,16 @@ dynamic = ["version"]
 
 dependencies = [
     "flax>=0.12.7",
+    "grain>=0.2.16",
     "jax>=0.10.0",
     "optax>=0.2.8",
+    "orbax>=0.1.9",
     "pydantic>=2.13.3",
     "requests>=2.33.1",
     "returns>=0.27.0",
+    "torch>=2.11.0",
     "tyro>=1.0.13",
+    "wandb>=0.26.1",
 ]
 
 
@@ -159,3 +163,6 @@ testpaths = [
 ]
 norecursedirs = []
 filterwarnings = []
+markers = [
+    "integration: marks integration tests",
+]
