@@ -6,13 +6,13 @@ from flax.nnx.nn.linear import Linear
 from jax import Array
 from jax.numpy import arange
 
-from alpacax.models.config import (
+from alpacax.models.gpt2.attention import MultiHeadSelfAttention
+from alpacax.models.gpt2.config import (
     ActivationFn,
+    DenseMLPConfig,
     GPTConfig,
     TransformerBlockConfig,
-    DenseMLPConfig,
 )
-from alpacax.models.attention import MultiHeadSelfAttention
 
 
 class MLP(Module):
@@ -30,7 +30,7 @@ class MLP(Module):
         )
 
     @override
-    def __call__(self, x: Array, *, rngs: Rngs | None = None) -> Array:
+    def __call__(self, x: Array) -> Array:
         mlp = self.fc1(x)
         mlp = self.activation(mlp)
         mlp = self.fc2(mlp)
@@ -46,40 +46,36 @@ class TransformerBlock(Module):
         self.mha_norm: LayerNorm = LayerNorm(
             config.d_model, use_bias=config.attention.use_bias, rngs=rngs, epsilon=1e-5
         )
-        self.mha: MultiHeadSelfAttention = MultiHeadSelfAttention(
-            config.attention, rngs=rngs
-        )
-        self.mha_residual_dropout: Dropout = Dropout(config.dropout_rate)
+        self.mha: MultiHeadSelfAttention = MultiHeadSelfAttention(config.attention, rngs=rngs)
+        self.mha_residual_dropout: Dropout = Dropout(config.dropout_rate, rngs=rngs)
 
         self.mlp_norm: LayerNorm = LayerNorm(
             config.d_model, use_bias=config.mlp.use_bias, rngs=rngs, epsilon=1e-5
         )
         self.mlp: MLP = MLP(config.mlp, rngs=rngs)
-        self.mlp_residual_dropout: Dropout = Dropout(config.dropout_rate)
+        self.mlp_residual_dropout: Dropout = Dropout(config.dropout_rate, rngs=rngs)
 
     @override
-    def __call__(self, x: Array, *, rngs: Rngs | None = None) -> Array:
+    def __call__(self, x: Array) -> Array:
         mha = self.mha_norm(x)
-        mha = self.mha(mha, rngs=rngs)
-        x = x + self.mha_residual_dropout(mha, rngs=rngs)
+        mha = self.mha(mha)
+        x = x + self.mha_residual_dropout(mha)
         mlp = self.mlp_norm(x)
-        mlp = self.mlp(mlp, rngs=rngs)
-        x = x + self.mlp_residual_dropout(mlp, rngs=rngs)
+        mlp = self.mlp(mlp)
+        x = x + self.mlp_residual_dropout(mlp)
         return x
 
 
 class GPT2(Module):
     def __init__(self, config: GPTConfig, rngs: Rngs) -> None:
         self.max_seq_len: int = config.max_seq_len
-        self.token_embedding: Embed = Embed(
-            config.vocab_size, config.d_model, rngs=rngs
-        )
+        self.token_embedding: Embed = Embed(config.vocab_size, config.d_model, rngs=rngs)
         self.position_embedding: Embed = Embed(
             config.max_seq_len,
             config.d_model,
             rngs=rngs,
         )
-        self.embed_dropout: Dropout = Dropout(config.embedding.dropout_rate)
+        self.embed_dropout: Dropout = Dropout(config.embedding.dropout_rate, rngs=rngs)
         self.blocks: List[TransformerBlock] = List(
             [TransformerBlock(config.block, rngs) for _ in range(config.n_layers)]
         )
@@ -95,7 +91,7 @@ class GPT2(Module):
             )
 
     @override
-    def __call__(self, token_ids: Array, *, rngs: Rngs | None = None) -> Array:
+    def __call__(self, token_ids: Array) -> Array:
         _, seq_len = token_ids.shape
         if seq_len > self.max_seq_len:
             raise ValueError("Token length is greater than max sequence length")
@@ -104,10 +100,10 @@ class GPT2(Module):
 
         x = self.token_embedding(token_ids)
         x = x + self.position_embedding(positions)
-        x = self.embed_dropout(x, rngs=rngs)
+        x = self.embed_dropout(x)
 
         for block in self.blocks:
-            x = block(x, rngs=rngs)
+            x = block(x)
         x = self.layernorm(x)
 
         # weight tying

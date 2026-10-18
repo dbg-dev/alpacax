@@ -1,8 +1,8 @@
-from typing import ClassVar
 from collections.abc import Callable
+from typing import ClassVar
+
 from jax import Array
 from jax.nn import gelu
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 type ActivationFn = Callable[[Array], Array]

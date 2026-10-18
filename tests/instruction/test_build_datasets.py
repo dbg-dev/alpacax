@@ -31,7 +31,7 @@ def test_build_dataset_success():
         ) as process_instructions,
         patch(
             "alpacax.pipelines.instruction.runner.shuffle_split",
-            return_value=Mock(return_value=Success(split)),
+            return_value=Mock(return_value=split),
         ) as shuffle_split,
     ):
         result = build_dataset("https://example.com/data.json", tokenizer, config)

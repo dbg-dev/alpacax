@@ -42,11 +42,11 @@ class DatasetSplit[T, U](BaseModel):
 
 class SplitConfig(BaseModel):
     train: float = Field(ge=0, le=1)
-    val: float = Field(ge=0, le=1)
+    validation: float = Field(ge=0, le=1)
     test: float = Field(ge=0, le=1)
 
     @model_validator(mode="after")
     def must_sum_to_one(self):
-        if not abs(self.train + self.val + self.test - 1.0) < 1e-6:
+        if not abs(self.train + self.validation + self.test - 1.0) < 1e-6:
             raise ValueError("splits must sum to 1.0")
         return self

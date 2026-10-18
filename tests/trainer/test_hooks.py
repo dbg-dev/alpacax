@@ -1,0 +1,212 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import pytest
+
+from alpacax.trainer.checkpoints import CheckpointPayload
+from alpacax.trainer.contracts import (
+    EvalPhase,
+    HookContext,
+    HookEntry,
+    TrainPhase,
+)
+from alpacax.trainer.hooks import checkpoint_hook, eval_hook, logging_hook, run_hooks
+
+
+class FakeMetric:
+    def __init__(self) -> None:
+        self.updated: list[tuple[float, object, object]] = []
+        self.compute_calls: int = 0
+        self.reset_calls: int = 0
+
+    def update(self, *, loss: float, logits: object = None, labels: object = None) -> None:
+        self.updated.append((loss, logits, labels))
+
+    def compute(self) -> dict[str, float]:
+        self.compute_calls += 1
+        return {"loss": float(len(self.updated))}
+
+    def reset(self) -> None:
+        self.reset_calls += 1
+        self.updated.clear()
+
+
+class FakeLogger:
+    def __init__(self) -> None:
+        self.records: list[tuple[dict[str, float], int]] = []
+
+    def log(self, metrics: dict[str, float], step: int) -> None:
+        self.records.append((metrics, step))
+
+    def close(self) -> None:
+        pass
+
+
+@dataclass
+class FakeOptimizer:
+    pass
+
+
+def make_train_phase(
+    *,
+    metric: FakeMetric | None = None,
+    loader=None,
+) -> TrainPhase:
+    def step(
+        model: object,
+        optimizer: FakeOptimizer,
+        metrics: FakeMetric,
+        x: object,
+        y: object,
+    ) -> None:
+        metrics.update(loss=1.0, logits=x, labels=y)
+
+    return TrainPhase(
+        model=object(),
+        optimizer=FakeOptimizer(),
+        loader=loader if loader is not None else [(1, 1)],
+        metrics=metric or FakeMetric(),
+        step=step,
+    )
+
+
+def make_eval_phase(*, metric: FakeMetric | None = None, loader: object = None) -> EvalPhase:
+    def step(model: object, metrics: FakeMetric, x, y) -> None:
+        metrics.update(loss=1.0, logits=x, labels=y)
+
+    return EvalPhase(
+        model=object(),
+        loader=loader if loader is not None else [(1, 1), (2, 2)],
+        metrics=metric or FakeMetric(),
+        step=step,
+    )
+
+
+def test_hook_entry_rejects_non_positive_interval() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        HookEntry(lambda ctx: None, every=0)
+
+
+def test_run_hooks_respects_interval() -> None:
+    calls: list[int] = []
+    ctx = HookContext(step=3, train=make_train_phase())
+
+    run_hooks(
+        ctx,
+        hooks=(
+            HookEntry(lambda ctx: calls.append(ctx.step), every=2, lead_only=False),
+            HookEntry(lambda ctx: calls.append(ctx.step), every=3, lead_only=False),
+        ),
+    )
+
+    assert calls == [3]
+
+
+def test_logging_hook_computes_logs_and_resets_train_metrics() -> None:
+    metric = FakeMetric()
+    metric.update(loss=1.0)
+    logger = FakeLogger()
+    ctx = HookContext(step=7, train=make_train_phase(metric=metric))
+
+    logging_hook(logger)(ctx)
+
+    assert logger.records == [({"loss": 1.0}, 7)]
+    assert metric.compute_calls == 1
+    assert metric.reset_calls == 1
+    assert metric.updated == []
+
+
+def test_eval_hook_requires_eval_phase() -> None:
+    logger = FakeLogger()
+    ctx = HookContext(step=1, train=make_train_phase(), eval=None)
+
+    with pytest.raises(ValueError, match="eval phase"):
+        eval_hook(logger)(ctx)
+
+
+def test_eval_hook_runs_eval_phase_logs_and_resets_eval_metrics() -> None:
+    eval_metric = FakeMetric()
+    logger = FakeLogger()
+    ctx = HookContext(
+        step=10,
+        train=make_train_phase(),
+        eval=make_eval_phase(metric=eval_metric, loader=[("x1", "y1"), ("x2", "y2")]),
+    )
+
+    eval_hook(logger)(ctx)
+
+    assert logger.records == [({"loss": 2.0}, 10)]
+    assert eval_metric.compute_calls == 1
+    # once before eval, once after logging
+    assert eval_metric.reset_calls == 2
+    assert eval_metric.updated == []
+
+
+def test_eval_hook_warns_and_does_not_log_when_loader_empty() -> None:
+    eval_metric = FakeMetric()
+    logger = FakeLogger()
+    ctx = HookContext(
+        step=10,
+        train=make_train_phase(),
+        eval=make_eval_phase(metric=eval_metric, loader=[]),
+    )
+
+    with pytest.warns(UserWarning, match="produced no batches"):
+        eval_hook(logger)(ctx)
+
+    assert logger.records == []
+    assert eval_metric.compute_calls == 0
+    assert eval_metric.reset_calls == 1
+
+
+def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
+    class FakeCheckpointer:
+        def __init__(self) -> None:
+            self.calls: list[tuple[CheckpointPayload, int]] = []
+
+        def save(
+            self,
+            state: CheckpointPayload,
+            *,
+            step: int,
+        ) -> Path:
+            self.calls.append((state, step))
+            return Path(f"/fake/checkpoints/{step}")
+
+        def restore(self, path: Path | None = None) -> CheckpointPayload:
+            raise FileNotFoundError("No checkpoint available")
+
+        def latest(self) -> Path | None:
+            return None
+
+        def exists(self) -> bool:
+            return False
+
+        def close(self) -> None:
+            pass
+
+    train = make_train_phase()
+
+    payload = {
+        "model": "fake-model-state",
+        "optimizer": "fake-optimizer-state",
+        "metadata": {"step": 42},
+    }
+
+    def fake_payload_fn(model, optimizer, metadata):
+        assert model is train.model
+        assert optimizer is train.optimizer
+        assert metadata == {"step": 42}
+        return payload
+
+    checkpointer = FakeCheckpointer()
+    ctx = HookContext(step=42, train=train)
+
+    checkpoint_hook(
+        checkpointer,
+        payload_fn=fake_payload_fn,
+    )(ctx)
+
+    assert checkpointer.calls == [(payload, 42)]

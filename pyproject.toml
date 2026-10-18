@@ -7,7 +7,7 @@ Repository = "https://github.com/dbg-dev/alpacax"
 
 [project]
 name = "alpacax"
-description = "changeme"
+description = "Composable functional training infrastructure for JAX and Flax."
 authors = [
     { name="minky.raccoon", email="minky.raccoon@pm.me" },
 ]
@@ -20,12 +20,16 @@ dynamic = ["version"]
 
 dependencies = [
     "flax>=0.12.7",
+    "grain>=0.2.16",
     "jax>=0.10.0",
     "optax>=0.2.8",
+    "orbax>=0.1.9",
     "pydantic>=2.13.3",
     "requests>=2.33.1",
     "returns>=0.27.0",
+    "torch>=2.11.0",
     "tyro>=1.0.13",
+    "wandb>=0.26.1",
 ]
 
 
@@ -40,6 +44,7 @@ dev = [
     "rich>=14.3.2",
     "basedpyright>=1.38.0",
     "funlog>=0.2.1",
+    "pytest-cov>=7.1.0",
 ]
 
 [project.scripts]
@@ -158,3 +163,6 @@ testpaths = [
 ]
 norecursedirs = []
 filterwarnings = []
+markers = [
+    "integration: marks integration tests",
+]

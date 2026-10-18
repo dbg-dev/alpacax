@@ -51,7 +51,7 @@ def pad_to(tokens: list[int], length: int, pad_value: int) -> list[int]:
 def shuffle[T](
     samples: list[T],
     seed: int,
-):
+) -> list[T]:
 
     rng = random.Random(seed)
     shuffled = samples.copy()

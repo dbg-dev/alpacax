@@ -41,7 +41,10 @@ def test_process_instructions_processes_valid_rows_and_reports_invalid_rows():
     assert len(samples) == 2
     assert len(errors) == 2
 
-    assert [error.row_index for error in errors if isinstance(error, RowError)] == [1, 3]
+    assert [error.row_index for error in errors if isinstance(error, RowError)] == [
+        1,
+        3,
+    ]
 
     for sample in samples:
         assert len(sample.input_ids) == config.max_seq_len - 1
@@ -73,8 +76,8 @@ def test_processed_samples_are_split_without_dropping_or_duplicating_rows():
     split = _shuffle_split(
         (samples, errors),
         seed=123,
-        weights=SplitConfig(train=0.5, val=0.25, test=0.25),
-    ).unwrap()
+        weights=SplitConfig(train=0.5, validation=0.25, test=0.25),
+    )
 
     all_split_samples = split.train + split.validation + split.test
 

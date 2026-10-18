@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from functools import partial
 
 from returns.pipeline import flow
@@ -51,9 +51,10 @@ def prepare(
     )
 
 
-@safe
 def _shuffle_split(
-    processed: tuple[list[PaddedSample], list[DatasetError]], seed: int, weights: SplitConfig
+    processed: tuple[list[PaddedSample], list[DatasetError]],
+    seed: int,
+    weights: SplitConfig,
 ) -> DatasetSplit[PaddedSample, DatasetError]:
     samples, errors = processed
     shuffled = shuffle(samples, seed)
@@ -61,7 +62,12 @@ def _shuffle_split(
     return split
 
 
-def shuffle_split(config: PipelineConfig):
+def shuffle_split(
+    config: PipelineConfig,
+) -> Callable[
+    [tuple[list[PaddedSample], list[DatasetError]]],
+    DatasetSplit[PaddedSample, DatasetError],
+]:
     return partial(_shuffle_split, seed=config.seed, weights=config.weights)
 
 

@@ -1,15 +1,15 @@
 # tests/models/test_config.py
 
 import pytest
-from pydantic import ValidationError
 from jax.nn import relu
+from pydantic import ValidationError
 
-from alpacax.models.config import (
-    EmbeddingConfig,
-    DenseMLPConfig,
+from alpacax.models.gpt2.config import (
     AttentionConfig,
-    TransformerBlockConfig,
+    DenseMLPConfig,
+    EmbeddingConfig,
     GPTConfig,
+    TransformerBlockConfig,
 )
 
 

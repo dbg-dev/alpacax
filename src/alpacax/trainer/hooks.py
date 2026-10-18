@@ -1,0 +1,100 @@
+import warnings
+from collections.abc import Callable, Iterable
+
+from .checkpoints import CheckpointPayload, checkpoint_payload
+from .contracts import (
+    Checkpointer,
+    Hook,
+    HookContext,
+    HookEntry,
+    MetricsLogger,
+)
+from .utils import is_lead_process, to_host_metrics
+
+
+def run_hooks(
+    ctx: HookContext,
+    hooks: Iterable[HookEntry],
+) -> None:
+    lead = is_lead_process()
+
+    for entry in hooks:
+        if entry.lead_only and not lead:
+            continue
+        if not entry.should_run(ctx.step):
+            continue
+
+        entry.fn(ctx)
+
+
+def logging_hook(logger: MetricsLogger) -> Hook:
+    """Compute, log, and reset training metrics."""
+
+    def _hook(ctx: HookContext) -> None:
+        values = ctx.train.metrics.compute()
+        logger.log(to_host_metrics(values), step=ctx.step)
+        ctx.train.metrics.reset()
+
+    return _hook
+
+
+def eval_hook(
+    logger: MetricsLogger,
+    *,
+    max_batches: int | None = None,
+    warn_empty: bool = True,
+) -> Hook:
+    """Run the eval phase, log eval metrics, then reset eval metrics."""
+
+    def _hook(ctx: HookContext) -> None:
+        if ctx.eval is None:
+            raise ValueError("eval_hook requires an eval phase")
+
+        ctx.eval.metrics.reset()
+        batches_seen = 0
+
+        for index, (x, y) in enumerate(ctx.eval.loader):
+            if max_batches is not None and index >= max_batches:
+                break
+
+            ctx.eval.step(
+                ctx.eval.model,
+                ctx.eval.metrics,
+                x,
+                y,
+            )
+            batches_seen += 1
+
+        if batches_seen == 0:
+            if warn_empty:
+                warnings.warn(
+                    "eval_hook: eval loader produced no batches; skipping logging",
+                    stacklevel=2,
+                )
+            return
+
+        values = ctx.eval.metrics.compute()
+        logger.log(to_host_metrics(values), step=ctx.step)
+        ctx.eval.metrics.reset()
+
+    return _hook
+
+
+def checkpoint_hook(
+    checkpointer: Checkpointer[CheckpointPayload],
+    *,
+    payload_fn: Callable[..., CheckpointPayload] = checkpoint_payload,
+) -> Hook:
+    def _hook(ctx: HookContext) -> None:
+        payload = payload_fn(
+            model=ctx.train.model,
+            optimizer=ctx.train.optimizer,
+            metadata={"step": ctx.step},
+        )
+
+        checkpointer.save(
+            payload,
+            step=ctx.step,
+        )
+
+    return _hook

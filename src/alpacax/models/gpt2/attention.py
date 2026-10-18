@@ -5,7 +5,8 @@ from flax.nnx.nn.linear import Linear
 from jax import Array
 from jax.nn import softmax
 from jax.numpy import bool_, inf, split, swapaxes, tri, where
-from alpacax.models.config import AttentionConfig
+
+from alpacax.models.gpt2.config import AttentionConfig
 
 
 class MultiHeadSelfAttention(Module):
@@ -22,7 +23,7 @@ class MultiHeadSelfAttention(Module):
             use_bias=config.use_bias,
             rngs=rngs,
         )
-        self.attn_dropout: Dropout = Dropout(rate=config.dropout_rate)
+        self.attn_dropout: Dropout = Dropout(rate=config.dropout_rate, rngs=rngs)
         self.out_proj: Linear = Linear(
             config.d_model, config.d_model, use_bias=config.use_bias, rngs=rngs
         )
@@ -37,7 +38,7 @@ class MultiHeadSelfAttention(Module):
         return x.transpose(0, 2, 1, 3).reshape(B, L, self.embed_dim)
 
     @override
-    def __call__(self, x: Array, *, rngs: Rngs | None = None) -> Array:
+    def __call__(self, x: Array) -> Array:
         _, L, _ = x.shape
 
         qkv = split(self.qkv(x), 3, axis=-1)
@@ -49,11 +50,9 @@ class MultiHeadSelfAttention(Module):
             mask = ~tri(L, dtype=bool_)
             attn_scores = where(mask, -inf, attn_scores)
 
-        attn_probs = softmax(
-            attn_scores, axis=-1
-        )  # Note: Softmax applied AFTER the masking
+        attn_probs = softmax(attn_scores, axis=-1)  # Note: Softmax applied AFTER the masking
 
-        attn_probs = self.attn_dropout(attn_probs, rngs=rngs)
+        attn_probs = self.attn_dropout(attn_probs)
         z = attn_probs @ v
         z = self._merge_heads(z)
 
