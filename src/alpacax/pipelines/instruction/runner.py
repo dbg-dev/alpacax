@@ -1,12 +1,16 @@
 from functools import partial
 
 from returns.pipeline import flow
-from returns.pointfree import bind
+from returns.pointfree import bind, map_
 from returns.result import Failure, ResultE, safe
 
 from alpacax.pipelines.instruction.config import PipelineConfig
 from alpacax.pipelines.instruction.pipeio import fetch_raw
-from alpacax.pipelines.instruction.stages import drain, process_instruction, shuffle_split
+from alpacax.pipelines.instruction.stages import (
+    drain,
+    process_instruction,
+    shuffle_split,
+)
 from alpacax.pipelines.instruction.validation import validate_raw_dataset
 from alpacax.types.errors import DatasetError, annotate_failure
 from alpacax.types.models import (
@@ -63,5 +67,5 @@ def build_dataset(
         _fetch,
         bind(validate_raw_dataset),
         bind(process_instructions(tokenizer, cfg)),
-        bind(shuffle_split(cfg)),
+        map_(shuffle_split(cfg)),
     )

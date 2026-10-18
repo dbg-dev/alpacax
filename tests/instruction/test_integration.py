@@ -50,10 +50,7 @@ def test_build_dataset_integration_success(tmp_path):
     try:
         url = f"http://127.0.0.1:{server.server_port}/dataset.json"
 
-        config = PipelineConfig(
-            seed=123,
-            request_timeout_seconds=2,
-        )
+        config = PipelineConfig(seed=123, request_timeout_seconds=2, eos_token_id=-1)
 
         result = build_dataset(
             url=url,

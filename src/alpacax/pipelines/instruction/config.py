@@ -1,3 +1,4 @@
+import warnings
 from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -10,7 +11,7 @@ class PipelineConfig(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-    weights: SplitConfig = SplitConfig(train=0.8, val=0.1, test=0.1)
+    weights: SplitConfig = SplitConfig(train=0.8, validation=0.1, test=0.1)
     max_seq_len: int = Field(default=2048, ge=2)
     min_seq_len: int = Field(default=2, ge=2)
     truncation: Literal["skip", "truncate"] = "skip"
@@ -28,6 +29,9 @@ class PipelineConfig(BaseModel):
             raise ValueError("min_seq_len cannot exceed max_seq_len")
         if self.add_eos_token and self.eos_token_id is None:
             # This is allowed because some tokenizers include EOS in encode().
-            # The pipeline simply will not append EOS unless an id is provided.
+            warnings.warn(
+                "No eos token id is provided. The pipeline will not append EOS unless an id is provided",
+                stacklevel=2,
+            )
             return self
         return self
