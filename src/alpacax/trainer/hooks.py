@@ -44,38 +44,47 @@ def eval_hook(
     max_batches: int | None = None,
     warn_empty: bool = True,
 ) -> Hook:
-    """Run the eval phase, log eval metrics, then reset eval metrics."""
+    """Run the eval phase, log eval metrics, then reset eval metrics.
+
+    The eval model runs in eval mode (dropout off). The eval phase may share its
+    model with the train phase, so the train model is always handed back in train
+    mode afterwards, even if an eval step raises or the loader is empty.
+    """
 
     def _hook(ctx: HookContext) -> None:
         if ctx.eval is None:
             raise ValueError("eval_hook requires an eval phase")
 
-        ctx.eval.metrics.reset()
-        batches_seen = 0
+        try:
+            ctx.eval.model.eval()
+            ctx.eval.metrics.reset()
+            batches_seen = 0
 
-        for index, (x, y) in enumerate(ctx.eval.loader):
-            if max_batches is not None and index >= max_batches:
-                break
+            for index, (x, y) in enumerate(ctx.eval.loader):
+                if max_batches is not None and index >= max_batches:
+                    break
 
-            ctx.eval.step(
-                ctx.eval.model,
-                ctx.eval.metrics,
-                x,
-                y,
-            )
-            batches_seen += 1
-
-        if batches_seen == 0:
-            if warn_empty:
-                warnings.warn(
-                    "eval_hook: eval loader produced no batches; skipping logging",
-                    stacklevel=2,
+                ctx.eval.step(
+                    ctx.eval.model,
+                    ctx.eval.metrics,
+                    x,
+                    y,
                 )
-            return
+                batches_seen += 1
 
-        values = ctx.eval.metrics.compute()
-        logger.log(to_host_metrics(values), step=ctx.step)
-        ctx.eval.metrics.reset()
+            if batches_seen == 0:
+                if warn_empty:
+                    warnings.warn(
+                        "eval_hook: eval loader produced no batches; skipping logging",
+                        stacklevel=2,
+                    )
+                return
+
+            values = ctx.eval.metrics.compute()
+            logger.log(to_host_metrics(values), step=ctx.step)
+            ctx.eval.metrics.reset()
+        finally:
+            ctx.train.model.train()
 
     return _hook
 

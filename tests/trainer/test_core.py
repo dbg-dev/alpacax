@@ -22,14 +22,27 @@ class FakeOptimizer:
     pass
 
 
-def make_train_phase(loader) -> TrainPhase:
+class FakeModel:
+    """Stands in for an NNX module: records train()/eval() mode switches."""
+
+    def __init__(self, mode: str = "train") -> None:
+        self.mode = mode
+
+    def train(self) -> None:
+        self.mode = "train"
+
+    def eval(self) -> None:
+        self.mode = "eval"
+
+
+def make_train_phase(loader, model: FakeModel | None = None) -> TrainPhase:
     metric = FakeMetric()
 
     def step(model, optimizer, metrics, x, y) -> None:
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return TrainPhase(
-        model=object(),
+        model=model if model is not None else FakeModel(),
         optimizer=FakeOptimizer(),
         loader=loader,
         metrics=metric,
@@ -74,3 +87,22 @@ def test_run_calls_hooks_after_each_step() -> None:
     run(runner)
 
     assert seen_steps == [0, 1, 2]
+
+
+def test_run_puts_train_model_in_train_mode_for_every_step() -> None:
+    # Model arrives in eval mode, e.g. left over from an earlier eval pass.
+    model = FakeModel(mode="eval")
+    modes_seen: list[str] = []
+
+    train = make_train_phase(loader=[("x0", "y0"), ("x1", "y1")], model=model)
+    inner_step = train.step
+
+    def recording_step(model, optimizer, metrics, x, y) -> None:
+        modes_seen.append(model.mode)
+        inner_step(model, optimizer, metrics, x, y)
+
+    train.step = recording_step
+
+    run(Runner(train=train))
+
+    assert modes_seen == ["train", "train"]

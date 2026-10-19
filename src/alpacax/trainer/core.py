@@ -15,7 +15,12 @@ def run(runner: Runner) -> None:
 
     The train phase updates model/optimizer/metrics. Hooks own side effects such
     as logging, eval, checkpointing, and metric compute/reset boundaries.
+
+    The train model is put in train mode (dropout active) before the first step.
+    ``eval_hook`` switches to eval mode for its pass and hands the train model
+    back in train mode afterwards.
     """
+    runner.train.model.train()
     iterator = iter(runner.train.loader)
 
     try:

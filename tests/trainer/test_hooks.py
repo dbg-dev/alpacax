@@ -49,10 +49,24 @@ class FakeOptimizer:
     pass
 
 
+class FakeModel:
+    """Stands in for an NNX module: records train()/eval() mode switches."""
+
+    def __init__(self, mode: str = "train") -> None:
+        self.mode = mode
+
+    def train(self) -> None:
+        self.mode = "train"
+
+    def eval(self) -> None:
+        self.mode = "eval"
+
+
 def make_train_phase(
     *,
     metric: FakeMetric | None = None,
     loader=None,
+    model: FakeModel | None = None,
 ) -> TrainPhase:
     def step(
         model: object,
@@ -64,7 +78,7 @@ def make_train_phase(
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return TrainPhase(
-        model=object(),
+        model=model if model is not None else FakeModel(),
         optimizer=FakeOptimizer(),
         loader=loader if loader is not None else [(1, 1)],
         metrics=metric or FakeMetric(),
@@ -72,15 +86,21 @@ def make_train_phase(
     )
 
 
-def make_eval_phase(*, metric: FakeMetric | None = None, loader: object = None) -> EvalPhase:
-    def step(model: object, metrics: FakeMetric, x, y) -> None:
+def make_eval_phase(
+    *,
+    metric: FakeMetric | None = None,
+    loader: object = None,
+    model: FakeModel | None = None,
+    step=None,
+) -> EvalPhase:
+    def default_step(model: object, metrics: FakeMetric, x, y) -> None:
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return EvalPhase(
-        model=object(),
+        model=model if model is not None else FakeModel(),
         loader=loader if loader is not None else [(1, 1), (2, 2)],
         metrics=metric or FakeMetric(),
-        step=step,
+        step=step or default_step,
     )
 
 
@@ -159,6 +179,74 @@ def test_eval_hook_warns_and_does_not_log_when_loader_empty() -> None:
     assert logger.records == []
     assert eval_metric.compute_calls == 0
     assert eval_metric.reset_calls == 1
+
+
+def test_eval_hook_runs_steps_in_eval_mode_then_restores_train_mode() -> None:
+    model = FakeModel(mode="train")
+    modes_seen: list[str] = []
+
+    def recording_step(model: FakeModel, metrics: FakeMetric, x, y) -> None:
+        modes_seen.append(model.mode)
+        metrics.update(loss=1.0, logits=x, labels=y)
+
+    # Train and eval phases share one model, as in a typical single-model setup.
+    ctx = HookContext(
+        step=5,
+        train=make_train_phase(model=model),
+        eval=make_eval_phase(model=model, step=recording_step),
+    )
+
+    eval_hook(FakeLogger())(ctx)
+
+    assert modes_seen == ["eval", "eval"]
+    assert model.mode == "train"
+
+
+def test_eval_hook_restores_train_mode_when_eval_step_raises() -> None:
+    model = FakeModel(mode="train")
+
+    def failing_step(model: FakeModel, metrics: FakeMetric, x, y) -> None:
+        raise RuntimeError("boom")
+
+    ctx = HookContext(
+        step=5,
+        train=make_train_phase(model=model),
+        eval=make_eval_phase(model=model, step=failing_step),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        eval_hook(FakeLogger())(ctx)
+
+    assert model.mode == "train"
+
+
+def test_eval_hook_restores_train_mode_when_loader_is_empty() -> None:
+    model = FakeModel(mode="train")
+    ctx = HookContext(
+        step=5,
+        train=make_train_phase(model=model),
+        eval=make_eval_phase(model=model, loader=[]),
+    )
+
+    with pytest.warns(UserWarning, match="produced no batches"):
+        eval_hook(FakeLogger())(ctx)
+
+    assert model.mode == "train"
+
+
+def test_eval_hook_with_separate_eval_model_leaves_train_model_in_train_mode() -> None:
+    train_model = FakeModel(mode="train")
+    eval_model = FakeModel(mode="train")
+    ctx = HookContext(
+        step=5,
+        train=make_train_phase(model=train_model),
+        eval=make_eval_phase(model=eval_model),
+    )
+
+    eval_hook(FakeLogger())(ctx)
+
+    assert train_model.mode == "train"
+    assert eval_model.mode == "eval"
 
 
 def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
