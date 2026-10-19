@@ -118,9 +118,7 @@ def infer_transform(
 
         case TransformKind.AUTO:
             identity = src_shape == dst_shape
-            transpose = (
-                len(src_shape) >= 2 and transpose_last_two_shape(src_shape) == dst_shape
-            )
+            transpose = len(src_shape) >= 2 and transpose_last_two_shape(src_shape) == dst_shape
             if identity == transpose:
                 return None
             return TransformKind.IDENTITY if identity else TransformKind.TRANSPOSE_LAST_TWO
