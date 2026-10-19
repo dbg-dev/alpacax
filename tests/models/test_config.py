@@ -34,7 +34,7 @@ def test_embedding_config_valid():
         ("dropout_rate", 1.0),
     ],
 )
-def test_embedding_config_invalid(field, value):
+def test_embedding_config_invalid(field: str, value: int | float) -> None:
     kwargs = {
         "vocab_size": 50_257,
         "d_model": 768,
@@ -43,7 +43,7 @@ def test_embedding_config_invalid(field, value):
     kwargs[field] = value
 
     with pytest.raises(ValidationError):
-        EmbeddingConfig(**kwargs)
+        EmbeddingConfig.model_validate(kwargs)
 
 
 def test_dense_mlp_config_uses_expansion_factor():
@@ -112,7 +112,7 @@ def test_attention_config_rejects_invalid_head_split():
         ("dropout_rate", 1.0),
     ],
 )
-def test_attention_config_invalid_fields(field, value):
+def test_attention_config_invalid_fields(field: str, value: int | float) -> None:
     kwargs = {
         "d_model": 768,
         "n_heads": 12,
@@ -121,7 +121,7 @@ def test_attention_config_invalid_fields(field, value):
     kwargs[field] = value
 
     with pytest.raises(ValidationError):
-        AttentionConfig(**kwargs)
+        AttentionConfig.model_validate(kwargs)
 
 
 def test_transformer_block_config_valid():
@@ -237,7 +237,6 @@ def test_configs_are_frozen():
 
 def test_extra_fields_are_forbidden():
     with pytest.raises(ValidationError):
-        DenseMLPConfig(
-            d_model=768,
-            unknown_field=True,
+        DenseMLPConfig.model_validate(
+            {"d_model": 768, "unknown_field": True}
         )
