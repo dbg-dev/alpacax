@@ -7,14 +7,29 @@ from returns.result import Failure, Success
 from alpacax.params.mapping import (
     MappingError,
     MappingRule,
+    TensorLike,
     TransformKind,
     format_mapping_error,
     infer_transform,
     map_param_dict,
     resolve_rules,
     reverse_rules,
+    shape_of,
     transpose_last_two_shape,
 )
+
+
+def test_tensorlike_accepts_numpy_and_shape_only_objects() -> None:
+    class ShapeOnly:
+        @property
+        def shape(self) -> tuple[int, ...]:
+            return (2, 3)
+
+    array: TensorLike = np.zeros((2, 3))
+    shape_only: TensorLike = ShapeOnly()
+
+    assert shape_of(array) == (2, 3)
+    assert shape_of(shape_only) == (2, 3)
 
 
 def test_transpose_last_two_shape():
