@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable, Mapping, Sequence
-from typing import Any, Protocol, Self
+from typing import Any, Protocol, Self, cast
 
 from flax.nnx import GraphDef, Module, merge, split, state, to_pure_dict
 from flax.traverse_util import flatten_dict, unflatten_dict
@@ -23,6 +23,7 @@ type ModelParamKey = tuple[Hashable, ...]
 type HFParamKey = str
 
 type ModelParamDict = dict[ModelParamKey, Array]
+type ModelStateDict = dict[ModelParamKey, object]
 
 
 class HFTensor(TensorLike, Protocol):
@@ -56,12 +57,14 @@ def torch_to_jax(tensor: HFTensor) -> Array:
     return array(tensor.detach().cpu().numpy())
 
 
-def prepare_target(flax_model: Module) -> tuple[GraphDef[Any], ModelParamDict]:
+def prepare_target(flax_model: Module) -> tuple[GraphDef[Any], ModelStateDict]:
     graphdef, prestate = split(flax_model)
-    return graphdef, dict(flatten_dict(to_pure_dict(prestate)))
+    # NNX state may contain non-array variables. Flax's flattening utilities
+    # do not type their keys precisely, so constrain only the flattened keys.
+    return graphdef, cast(ModelStateDict, dict(flatten_dict(to_pure_dict(prestate))))
 
 
-def rebuild_model(graphdef: GraphDef[Any], post: ModelParamDict) -> Module:
+def rebuild_model(graphdef: GraphDef[Any], post: ModelStateDict) -> Module:
     return merge(graphdef, state(unflatten_dict(post)))
 
 
@@ -78,16 +81,21 @@ def model_mapper(
 
     src = src_model.state_dict()
     graphdef, pre = prepare_target(flax_model)
+    # Only JAX arrays are valid parameter-mapping destinations. Preserve all
+    # other NNX state when rebuilding the model after mapping.
+    array_targets: ModelParamDict = {
+        key: value for key, value in pre.items() if isinstance(value, Array)
+    }
 
     result = map_param_dict(
         src=src,
-        dst=pre,
+        dst=array_targets,
         rules=rules,
         convert=torch_to_jax,
         transpose_last_two=transpose_torch_last_two,
     )
 
-    return result.map(lambda post: rebuild_model(graphdef, post))
+    return result.map(lambda post: rebuild_model(graphdef, pre | post))
 
 
 def model_mapper_or_raise(
