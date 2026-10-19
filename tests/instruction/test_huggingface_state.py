@@ -21,6 +21,9 @@ def test_prepare_and_rebuild_preserves_non_array_state() -> None:
     assert flattened[("counter",)] == 7
     assert isinstance(flattened[("weight",)], type(jnp.array([1.0])))
 
+    # A mapped parameter can change without losing unrelated scalar state.
+    flattened[("weight",)] = jnp.array([3.0, 4.0])
     restored = rebuild_model(graphdef, flattened)
     assert restored.counter.value == 7
-    assert jnp.array_equal(restored.weight.value, model.weight.value)
+    assert jnp.array_equal(restored.weight.value, jnp.array([3.0, 4.0]))
+    assert jnp.array_equal(model.weight.value, jnp.array([1.0, 2.0]))
