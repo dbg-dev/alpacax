@@ -237,6 +237,4 @@ def test_configs_are_frozen():
 
 def test_extra_fields_are_forbidden():
     with pytest.raises(ValidationError):
-        DenseMLPConfig.model_validate(
-            {"d_model": 768, "unknown_field": True}
-        )
+        DenseMLPConfig.model_validate({"d_model": 768, "unknown_field": True})
