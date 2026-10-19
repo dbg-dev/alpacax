@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Hashable, Mapping, Sequence
 from typing import Any, Protocol, Self, cast
 
-from flax.nnx import GraphDef, Module, merge, split, state, to_pure_dict
+from flax.nnx import GraphDef, Module, merge, split, to_pure_dict
 from flax.traverse_util import flatten_dict, unflatten_dict
 from jax import Array
 from jax.numpy import array, swapaxes
@@ -65,7 +65,7 @@ def prepare_target(flax_model: Module) -> tuple[GraphDef[Any], ModelStateDict]:
 
 
 def rebuild_model(graphdef: GraphDef[Any], post: ModelStateDict) -> Module:
-    return merge(graphdef, state(unflatten_dict(post)))
+    # A plain dict of scalar and array leaves is already valid merge state.\n    # nnx.state() traverses graph nodes and can discard plain scalar leaves.\n    return merge(graphdef, unflatten_dict(post))
 
 
 def model_mapper(
