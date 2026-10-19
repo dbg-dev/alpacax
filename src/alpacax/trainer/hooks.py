@@ -17,13 +17,25 @@ from .utils import is_lead_process, to_host_metrics
 def run_hooks(
     ctx: HookContext,
     hooks: Iterable[HookEntry],
+    *,
+    final: bool = False,
 ) -> None:
+    """Dispatch periodic hooks, or flush non-due hooks after the final update.
+
+    ``final=True`` is a second pass at the same completed step; hooks already
+    triggered by their regular interval must not run twice.
+    """
     lead = is_lead_process()
 
     for entry in hooks:
         if entry.lead_only and not lead:
             continue
-        if not entry.should_run(ctx.step):
+
+        due = entry.should_run(ctx.step)
+        if final:
+            if not entry.on_final or due:
+                continue
+        elif not due:
             continue
 
         entry.fn(ctx)

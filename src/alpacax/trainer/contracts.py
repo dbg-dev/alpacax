@@ -79,13 +79,15 @@ class HookEntry:
     fn: Hook
     every: int = 1
     lead_only: bool = True
+    on_final: bool = True
 
     def __post_init__(self) -> None:
         if self.every <= 0:
             raise ValueError("hook interval 'every' must be positive")
 
     def should_run(self, step: int) -> bool:
-        return step % self.every == 0
+        """Whether a periodic hook is due after this many completed updates."""
+        return step > 0 and step % self.every == 0
 
 
 @dataclass(slots=True)

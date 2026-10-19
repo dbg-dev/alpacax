@@ -1,3 +1,5 @@
+from itertools import islice
+
 from .contracts import HookContext, Runner
 from .hooks import run_hooks
 
@@ -20,30 +22,16 @@ def run(runner: Runner) -> None:
     ``eval_hook`` switches to eval mode for its pass and hands the train model
     back in train mode afterwards.
     """
+    if runner.max_steps is not None and runner.max_steps <= 0:
+        raise ValueError("max_steps must be positive")
+
     runner.train.model.train()
-    iterator = iter(runner.train.loader)
+    batches = iter(runner.train.loader)
+    if runner.max_steps is not None:
+        batches = islice(batches, runner.max_steps)
 
-    try:
-        first_x, first_y = next(iterator)
-    except StopIteration as exc:
-        raise EmptyDataloaderError("train loader produced no batches") from exc
-
-    runner.train.step(
-        runner.train.model,
-        runner.train.optimizer,
-        runner.train.metrics,
-        first_x,
-        first_y,
-    )
-    run_hooks(
-        HookContext(step=0, train=runner.train, eval=runner.eval),
-        runner.hooks,
-    )
-
-    for step, (x, y) in enumerate(iterator, start=1):
-        if runner.max_steps is not None and step >= runner.max_steps:
-            break
-
+    last_ctx: HookContext | None = None
+    for step, (x, y) in enumerate(batches, start=1):
         runner.train.step(
             runner.train.model,
             runner.train.optimizer,
@@ -51,7 +39,12 @@ def run(runner: Runner) -> None:
             x,
             y,
         )
-        run_hooks(
-            HookContext(step=step, train=runner.train, eval=runner.eval),
-            runner.hooks,
-        )
+        last_ctx = HookContext(step=step, train=runner.train, eval=runner.eval)
+        run_hooks(last_ctx, runner.hooks)
+
+    if last_ctx is None:
+        raise EmptyDataloaderError("train loader produced no batches")
+
+    # At normal termination, flush hooks whose interval did not land exactly
+    # on the last completed update, without duplicate logging/checkpoints.
+    run_hooks(last_ctx, runner.hooks, final=True)

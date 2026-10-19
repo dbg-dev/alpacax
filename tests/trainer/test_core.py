@@ -72,7 +72,7 @@ def test_run_respects_max_steps() -> None:
 
     run(runner)
 
-    # step 0 and step 1 run; loop stops before step 2
+    # Only two completed updates, numbered 1 and 2.
     assert train.metrics.count == 2
 
 
@@ -86,7 +86,7 @@ def test_run_calls_hooks_after_each_step() -> None:
 
     run(runner)
 
-    assert seen_steps == [0, 1, 2]
+    assert seen_steps == [1, 2, 3]
 
 
 def test_run_puts_train_model_in_train_mode_for_every_step() -> None:
@@ -106,3 +106,105 @@ def test_run_puts_train_model_in_train_mode_for_every_step() -> None:
     run(Runner(train=train))
 
     assert modes_seen == ["train", "train"]
+
+
+@pytest.mark.parametrize(
+    ("total_steps", "expected"),
+    [
+        (1, [1]),
+        (99, [99]),
+        (100, [100]),
+        (101, [100, 101]),
+        (200, [100, 200]),
+        (201, [100, 200, 201]),
+        (250, [100, 200, 250]),
+    ],
+)
+def test_hook_every_100_runs_on_completed_update_and_final_step(
+    total_steps: int, expected: list[int]
+) -> None:
+    seen: list[int] = []
+    runner = Runner(
+        train=make_train_phase(loader=((i, i) for i in range(total_steps))),
+        hooks=(HookEntry(lambda ctx: seen.append(ctx.step), every=100, lead_only=False),),
+    )
+
+    run(runner)
+
+    assert seen == expected
+
+
+def test_hook_interval_never_runs_at_step_zero() -> None:
+    entry = HookEntry(lambda ctx: None, every=100)
+
+    assert not entry.should_run(0)
+    assert not entry.should_run(99)
+    assert entry.should_run(100)
+
+
+def test_final_hook_can_be_disabled() -> None:
+    seen: list[int] = []
+    runner = Runner(
+        train=make_train_phase(loader=[(i, i) for i in range(3)]),
+        hooks=(
+            HookEntry(
+                lambda ctx: seen.append(ctx.step),
+                every=2,
+                lead_only=False,
+                on_final=False,
+            ),
+        ),
+    )
+
+    run(runner)
+
+    assert seen == [2]
+
+
+def test_final_hook_runs_at_max_steps_without_duplicate() -> None:
+    seen: list[int] = []
+    runner = Runner(
+        train=make_train_phase(loader=((i, i) for i in range(210))),
+        hooks=(HookEntry(lambda ctx: seen.append(ctx.step), every=100, lead_only=False),),
+        max_steps=201,
+    )
+
+    run(runner)
+
+    assert seen == [100, 200, 201]
+
+
+def test_max_steps_does_not_consume_an_extra_batch() -> None:
+    yielded: list[int] = []
+
+    def loader():
+        for i in range(5):
+            yielded.append(i)
+            yield i, i
+
+    train = make_train_phase(loader=loader())
+    run(Runner(train=train, max_steps=2))
+
+    assert train.metrics.count == 2
+    assert yielded == [0, 1]
+
+
+@pytest.mark.parametrize("max_steps", [0, -1])
+def test_run_rejects_non_positive_max_steps(max_steps: int) -> None:
+    runner = Runner(train=make_train_phase(loader=[(1, 1)]), max_steps=max_steps)
+
+    with pytest.raises(ValueError, match="max_steps must be positive"):
+        run(runner)
+
+
+def test_run_with_short_loader_uses_actual_final_step() -> None:
+    seen: list[int] = []
+    runner = Runner(
+        train=make_train_phase(loader=[(1, 1), (2, 2)]),
+        hooks=(HookEntry(lambda ctx: seen.append(ctx.step), every=10, lead_only=False),),
+        max_steps=100,
+    )
+
+    run(runner)
+
+    assert seen == [2]
