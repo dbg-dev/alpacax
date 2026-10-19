@@ -79,7 +79,9 @@ class GPT2(Module):
         self.blocks: List[TransformerBlock] = List(
             [TransformerBlock(config.block, rngs) for _ in range(config.n_layers)]
         )
-        self.layernorm: LayerNorm = LayerNorm(config.d_model, rngs=rngs)
+        self.layernorm: LayerNorm = LayerNorm(
+            config.d_model, rngs=rngs, epsilon=1e-5
+        )
         self.tie_embeddings: bool = config.tie_embeddings
 
         if not self.tie_embeddings:
