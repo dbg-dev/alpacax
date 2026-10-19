@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 
-from alpacax.params.mapping import AUTO, MappingRule, rule
+from alpacax.params.mapping import AUTO, IDENTITY, MappingRule, rule
 
 type ModelParamKey = tuple[Hashable, ...]
 type HFParamKey = str
@@ -15,6 +15,7 @@ __all__ = [
     "local",
     "hf",
     "AUTO",
+    "IDENTITY",
     "rule",
     "hfgpt2_to_local_gpt2_rules",
 ]
@@ -155,27 +156,27 @@ def hfgpt2_to_local_gpt2_rules(
     for i in range(num_layers):
         rules.extend(
             [
-                rule(local.mha_norm_bias(i), hf.ln1_bias(i)),
-                rule(local.mha_norm_scale(i), hf.ln1_weight(i)),
-                rule(local.mha_qkv_bias(i), hf.attn_qkv_bias(i)),
-                rule(local.mha_qkv_kernel(i), hf.attn_qkv_weight(i)),
-                rule(local.mha_out_bias(i), hf.attn_out_bias(i)),
-                rule(local.mha_out_kernel(i), hf.attn_out_weight(i)),
-                rule(local.mlp_norm_bias(i), hf.ln2_bias(i)),
-                rule(local.mlp_norm_scale(i), hf.ln2_weight(i)),
-                rule(local.mlp_fc1_bias(i), hf.mlp_fc_bias(i)),
-                rule(local.mlp_fc1_kernel(i), hf.mlp_fc_weight(i)),
-                rule(local.mlp_fc2_bias(i), hf.mlp_proj_bias(i)),
-                rule(local.mlp_fc2_kernel(i), hf.mlp_proj_weight(i)),
+                rule(local.mha_norm_bias(i), hf.ln1_bias(i), IDENTITY),
+                rule(local.mha_norm_scale(i), hf.ln1_weight(i), IDENTITY),
+                rule(local.mha_qkv_bias(i), hf.attn_qkv_bias(i), IDENTITY),
+                rule(local.mha_qkv_kernel(i), hf.attn_qkv_weight(i), IDENTITY),
+                rule(local.mha_out_bias(i), hf.attn_out_bias(i), IDENTITY),
+                rule(local.mha_out_kernel(i), hf.attn_out_weight(i), IDENTITY),
+                rule(local.mlp_norm_bias(i), hf.ln2_bias(i), IDENTITY),
+                rule(local.mlp_norm_scale(i), hf.ln2_weight(i), IDENTITY),
+                rule(local.mlp_fc1_bias(i), hf.mlp_fc_bias(i), IDENTITY),
+                rule(local.mlp_fc1_kernel(i), hf.mlp_fc_weight(i), IDENTITY),
+                rule(local.mlp_fc2_bias(i), hf.mlp_proj_bias(i), IDENTITY),
+                rule(local.mlp_fc2_kernel(i), hf.mlp_proj_weight(i), IDENTITY),
             ]
         )
 
     rules.extend(
         [
-            rule(local.tok_embedding(), "transformer.wte.weight"),
-            rule(local.pos_embedding(), "transformer.wpe.weight"),
-            rule(local.final_ln_bias(), "transformer.ln_f.bias"),
-            rule(local.final_ln_scale(), "transformer.ln_f.weight"),
+            rule(local.tok_embedding(), "transformer.wte.weight", IDENTITY),
+            rule(local.pos_embedding(), "transformer.wpe.weight", IDENTITY),
+            rule(local.final_ln_bias(), "transformer.ln_f.bias", IDENTITY),
+            rule(local.final_ln_scale(), "transformer.ln_f.weight", IDENTITY),
         ]
     )
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from alpacax.models.gpt2.hf_mappings import (
     AUTO,
+    IDENTITY,
     GPT2LocalKeys,
     hf,
     hfgpt2_to_local_gpt2_rules,
@@ -17,10 +18,10 @@ def test_gpt2_rules_have_expected_count():
     assert len(rules) == 2 * 12 + 4
 
 
-def test_gpt2_rules_default_to_auto_transform():
+def test_gpt2_rules_use_explicit_identity_transform():
     rules = hfgpt2_to_local_gpt2_rules(num_layers=1)
 
-    assert all(rule.transform is TransformKind.AUTO for rule in rules)
+    assert all(rule.transform is IDENTITY for rule in rules)
 
 
 def test_gpt2_rules_use_named_local_keys():

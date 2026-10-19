@@ -30,8 +30,8 @@ class TensorLike(Protocol):
 class TransformKind(Enum):
     """Supported layout transforms.
 
-    AUTO is resolved before application. At present it only infers identity or
-    a transpose of the last two dimensions.
+    AUTO is resolved before application. It infers identity or a transpose of
+    the last two dimensions only when the tensor shapes make the choice unique.
     """
 
     IDENTITY = "identity"
@@ -71,7 +71,7 @@ def rule[DstKey: Hashable, SrcKey: Hashable](
 
 @dataclass(frozen=True, slots=True)
 class MappingError[DstKey, SrcKey]:
-    kind: Literal["missing_src", "missing_dst", "shape_mismatch"]
+    kind: Literal["missing_src", "missing_dst", "shape_mismatch", "ambiguous_transform"]
     dst: DstKey
     src: SrcKey | None = None
     dst_shape: Shape | None = None
@@ -105,23 +105,25 @@ def infer_transform(
     dst_shape: Shape,
     requested: TransformKind,
 ) -> TransformKind | None:
-    """Resolve a requested transform against source/destination shapes."""
+    """Resolve a transform from shapes, returning None for mismatches or ambiguity."""
 
     match requested:
         case TransformKind.IDENTITY:
             return TransformKind.IDENTITY if src_shape == dst_shape else None
 
         case TransformKind.TRANSPOSE_LAST_TWO:
-            if transpose_last_two_shape(src_shape) == dst_shape:
+            if len(src_shape) >= 2 and transpose_last_two_shape(src_shape) == dst_shape:
                 return TransformKind.TRANSPOSE_LAST_TWO
             return None
 
         case TransformKind.AUTO:
-            if src_shape == dst_shape:
-                return TransformKind.IDENTITY
-            if transpose_last_two_shape(src_shape) == dst_shape:
-                return TransformKind.TRANSPOSE_LAST_TWO
-            return None
+            identity = src_shape == dst_shape
+            transpose = (
+                len(src_shape) >= 2 and transpose_last_two_shape(src_shape) == dst_shape
+            )
+            if identity == transpose:
+                return None
+            return TransformKind.IDENTITY if identity else TransformKind.TRANSPOSE_LAST_TWO
 
         case _:
             assert_never(requested)
@@ -167,9 +169,16 @@ def resolve_rule[
 
     transform = infer_transform(src_shape, dst_shape, rule.transform)
     if transform is None:
+        # Both identity and last-two transpose are shape-compatible here.
+        ambiguous = (
+            rule.transform is TransformKind.AUTO
+            and len(src_shape) >= 2
+            and src_shape == dst_shape
+            and src_shape[-2] == src_shape[-1]
+        )
         return Failure(
             MappingError(
-                kind="shape_mismatch",
+                kind="ambiguous_transform" if ambiguous else "shape_mismatch",
                 dst=rule.dst,
                 src=rule.src,
                 dst_shape=dst_shape,
@@ -308,6 +317,13 @@ def format_mapping_error[DstKey, SrcKey](error: MappingError[DstKey, SrcKey]) ->
                 f"dst={error.dst!r} dst_shape={error.dst_shape}, "
                 f"src={error.src!r} src_shape={error.src_shape}, "
                 f"requested_transform={error.requested_transform}"
+            )
+        case "ambiguous_transform":
+            return (
+                "ambiguous AUTO transform for mapping: "
+                f"dst={error.dst!r} dst_shape={error.dst_shape}, "
+                f"src={error.src!r} src_shape={error.src_shape}; "
+                "specify IDENTITY or TRANSPOSE_LAST_TWO explicitly"
             )
         case _:
             assert_never(error.kind)

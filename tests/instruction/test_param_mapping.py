@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from returns.result import Failure, Success
 
 from alpacax.params.mapping import (
     MappingError,
     MappingRule,
     TransformKind,
+    format_mapping_error,
     infer_transform,
     map_param_dict,
     resolve_rules,
@@ -27,6 +29,16 @@ def test_infer_transform_identity():
 
 def test_infer_transform_auto_transpose_last_two():
     assert infer_transform((2, 3), (3, 2), TransformKind.AUTO) == TransformKind.TRANSPOSE_LAST_TWO
+
+
+def test_infer_transform_auto_rejects_ambiguous_square_matrix():
+    assert infer_transform((2, 2), (2, 2), TransformKind.AUTO) is None
+    assert infer_transform((3, 2, 2), (3, 2, 2), TransformKind.AUTO) is None
+
+
+def test_infer_transform_vector_identity_but_not_transpose():
+    assert infer_transform((3,), (3,), TransformKind.AUTO) is TransformKind.IDENTITY
+    assert infer_transform((3,), (3,), TransformKind.TRANSPOSE_LAST_TWO) is None
 
 
 def test_resolve_rules_reports_missing_source():
@@ -71,6 +83,62 @@ def test_resolve_rules_reports_shape_mismatch():
     assert error.kind == "shape_mismatch"
     assert error.src_shape == (2, 3)
     assert error.dst_shape == (4, 5)
+
+
+@pytest.mark.parametrize("shape", [(2, 2), (3, 2, 2)])
+def test_auto_square_matrix_returns_ambiguity_error(shape):
+    src = {"a": np.arange(np.prod(shape)).reshape(shape)}
+    dst = {"x": np.zeros(shape)}
+
+    result = resolve_rules(src, dst, [MappingRule(dst="x", src="a")])
+
+    assert isinstance(result, Failure)
+    [error] = result.failure()
+    assert error == MappingError(
+        kind="ambiguous_transform",
+        dst="x",
+        src="a",
+        dst_shape=shape,
+        src_shape=shape,
+        requested_transform=TransformKind.AUTO,
+    )
+    assert "specify IDENTITY or TRANSPOSE_LAST_TWO" in format_mapping_error(error)
+
+
+@pytest.mark.parametrize(
+    ("transform", "expected"),
+    [
+        (TransformKind.IDENTITY, np.array([[1, 2], [3, 4]])),
+        (TransformKind.TRANSPOSE_LAST_TWO, np.array([[1, 3], [2, 4]])),
+    ],
+)
+def test_explicit_transform_maps_square_matrix(transform, expected):
+    src = {"a": np.array([[1, 2], [3, 4]])}
+    dst = {"x": np.zeros((2, 2))}
+
+    result = map_param_dict(
+        src=src,
+        dst=dst,
+        rules=[MappingRule(dst="x", src="a", transform=transform)],
+        convert=lambda x: x,
+        transpose_last_two=lambda x: x.T,
+    )
+
+    assert isinstance(result, Success)
+    np.testing.assert_array_equal(result.unwrap()["x"], expected)
+
+
+def test_explicit_transpose_rejects_vector():
+    src = {"a": np.array([1, 2, 3])}
+    dst = {"x": np.zeros((3,))}
+
+    result = resolve_rules(
+        src, dst, [MappingRule(dst="x", src="a", transform=TransformKind.TRANSPOSE_LAST_TWO)]
+    )
+
+    assert isinstance(result, Failure)
+    [error] = result.failure()
+    assert error.kind == "shape_mismatch"
 
 
 def test_map_param_dict_preserves_unmapped_destination_values():
