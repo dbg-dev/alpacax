@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import warnings
 from collections.abc import Callable, Iterable
 
-from .checkpoints import CheckpointPayload, checkpoint_payload
 from .contracts import (
+    CheckpointPayload,
     Checkpointer,
     Hook,
     HookContext,
@@ -92,8 +94,14 @@ def eval_hook(
 def checkpoint_hook(
     checkpointer: Checkpointer[CheckpointPayload],
     *,
-    payload_fn: Callable[..., CheckpointPayload] = checkpoint_payload,
+    payload_fn: Callable[..., CheckpointPayload] | None = None,
 ) -> Hook:
+    # Orbax is loaded only if the default checkpoint payload builder is used.
+    if payload_fn is None:
+        from .checkpoints import checkpoint_payload
+
+        payload_fn = checkpoint_payload
+
     def _hook(ctx: HookContext) -> None:
         payload = payload_fn(
             model=ctx.train.model,

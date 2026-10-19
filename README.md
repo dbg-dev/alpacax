@@ -7,7 +7,7 @@ Fetches, validates, formats, tokenizes, masks, pads, and splits an Alpaca-format
 instruction dataset using a railway-oriented Result pattern for error handling.
 
 Python: 3.12+
-Dependencies: pip install requests pydantic returns
+Core dependencies: pydantic, requests, returns, tyro
 
 Design goals
 
@@ -18,6 +18,34 @@ Design goals
 - Mask prompt labels by default for causal-LM instruction fine-tuning.
 - Return partial success with skipped row errors whenever possible.
 
+
+## Optional dependencies
+
+Install only what you use; the core instruction pipeline does not require JAX,
+PyTorch or W&B:
+
+```sh
+pip install alpacax                   # dataset pipeline + CLI
+pip install 'alpacax[train]'          # JAX/Flax training + checkpoints
+pip install 'alpacax[huggingface]'    # HF/PyTorch -> Flax adapter
+pip install 'alpacax[train,wandb]'    # training + W&B logger
+```
+
+With uv in a checkout:
+
+```sh
+uv sync --no-dev                  # minimal installation
+uv sync --extra train            # training and dev tools
+uv sync --all-extras             # full development environment
+```
+
+The PyTorch adapter operates on a supplied model's `state_dict()`; alpacax
+itself does not eagerly import `torch`. The W&B logger imports `wandb` only
+when constructed. The default checkpoint payload builder is loaded only when
+`checkpoint_hook()` is configured.
+
+After changing dependency declarations, regenerate and commit `uv.lock` with
+`uv lock` so CI and other developers use the updated resolution.
 
 * * *
 

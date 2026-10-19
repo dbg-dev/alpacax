@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, MutableMapping, Sequence
-from typing import Any, Protocol
+from collections.abc import Hashable, Mapping, Sequence
+from typing import Any, Protocol, Self
 
 from flax.nnx import GraphDef, Module, merge, split, state, to_pure_dict
 from flax.traverse_util import flatten_dict, unflatten_dict
 from jax import Array
 from jax.numpy import array, swapaxes
 from returns.result import Result, Success
-from torch import Tensor
 
 from alpacax.params.mapping import (
     MappingError,
     MappingRule,
+    TensorLike,
     format_mapping_errors,
     map_param_dict,
 )
@@ -22,15 +22,29 @@ from alpacax.params.mapping import (
 type ModelParamKey = tuple[Hashable, ...]
 type HFParamKey = str
 
-type HFStateDict = MutableMapping[HFParamKey, Tensor]
 type ModelParamDict = dict[ModelParamKey, Array]
 
 
+class HFTensor(TensorLike, Protocol):
+    """The tensor operations used by this adapter; no PyTorch import required."""
+
+    def transpose(self, dim0: int, dim1: int) -> Self: ...
+
+    def detach(self) -> Self: ...
+
+    def cpu(self) -> Self: ...
+
+    def numpy(self) -> Any: ...
+
+
+type HFStateDict = Mapping[HFParamKey, HFTensor]
+
+
 class HFModelLike(Protocol):
-    def state_dict(self) -> MutableMapping[str, Tensor]: ...
+    def state_dict(self) -> HFStateDict: ...
 
 
-def transpose_torch_last_two(x: Tensor) -> Tensor:
+def transpose_torch_last_two(x: HFTensor) -> HFTensor:
     return x.transpose(-2, -1)
 
 
@@ -38,7 +52,7 @@ def transpose_jax_last_two(x: Array) -> Array:
     return swapaxes(x, -2, -1)
 
 
-def torch_to_jax(tensor: Tensor) -> Array:
+def torch_to_jax(tensor: HFTensor) -> Array:
     return array(tensor.detach().cpu().numpy())
 
 

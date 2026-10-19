@@ -1,12 +1,13 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from flax.nnx import Metric, Module, Optimizer
 from grain import DataLoader
 from jax import Array
 
+type CheckpointPayload = dict[str, Any]
 type LossWithAuxFn = Callable[[Module, Array, Array], tuple[Array, Array]]
 type TrainStep = Callable[
     [Module, Optimizer[Module], Metric, Array, Array],

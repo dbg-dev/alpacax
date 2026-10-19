@@ -13,7 +13,13 @@ class ConsoleLogger:
 
 class WandbLogger:
     def __init__(self, project: str, config: Mapping[str, Any] | None = None):
-        import wandb
+        try:
+            import wandb
+        except ImportError as exc:
+            raise ImportError(
+                "WandbLogger requires W&B. Install it with "
+                "`pip install 'alpacax[wandb]'` or `uv sync --extra wandb`."
+            ) from exc
 
         self._wandb = wandb
         self._wandb.init(project=project, config=dict(config or {}))

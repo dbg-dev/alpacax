@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from flax.nnx import Module, Optimizer, state
 from orbax.checkpoint import CheckpointManager, CheckpointManagerOptions, args
 
-type CheckpointPayload = dict[str, Any]
+from .contracts import CheckpointPayload
 
 
 class TrainerCheckpointer:
