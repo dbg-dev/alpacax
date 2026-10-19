@@ -4,8 +4,8 @@ import warnings
 from collections.abc import Callable, Iterable
 
 from .contracts import (
-    CheckpointPayload,
     Checkpointer,
+    CheckpointPayload,
     Hook,
     HookContext,
     HookEntry,
