@@ -19,9 +19,7 @@ type Shape = tuple[int, ...]
 
 
 class TensorLike(Protocol):
-    """Small structural protocol for tensors/arrays used by the mapper."""
-
-    ndim: int
+    """Read-only shape contract shared by array and tensor implementations."""
 
     @property
     def shape(self) -> Sequence[int]: ...
