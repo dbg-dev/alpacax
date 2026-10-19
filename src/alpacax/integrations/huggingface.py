@@ -65,7 +65,8 @@ def prepare_target(flax_model: Module) -> tuple[GraphDef[Any], ModelStateDict]:
 
 
 def rebuild_model(graphdef: GraphDef[Any], post: ModelStateDict) -> Module:
-    # A plain dict of scalar and array leaves is already valid merge state.\n    # nnx.state() traverses graph nodes and can discard plain scalar leaves.\n    return merge(graphdef, unflatten_dict(post))
+    # Preserve both array and non-array state leaves.
+    return merge(graphdef, unflatten_dict(post))
 
 
 def model_mapper(
