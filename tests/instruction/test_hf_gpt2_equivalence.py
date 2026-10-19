@@ -25,7 +25,42 @@ pytestmark = pytest.mark.integration
 def _load_factory() -> Callable[[Any], Any]:
     spec = os.environ.get("LOCAL_GPT2_FACTORY")
     if not spec:
-        pytest.skip("Set LOCAL_GPT2_FACTORY='module:function' to run local/HF equivalence test")
+        from flax import nnx
+
+        from alpacax.models.gpt2.config import (
+            AttentionConfig,
+            DenseMLPConfig,
+            EmbeddingConfig,
+            GPTConfig,
+            TransformerBlockConfig,
+        )
+        from alpacax.models.gpt2.gpt2 import GPT2
+
+        def build_local_gpt2(config: Any) -> Any:
+            d = config.n_embd
+            return GPT2(
+                GPTConfig(
+                    embedding=EmbeddingConfig(
+                        vocab_size=config.vocab_size,
+                        d_model=d,
+                        dropout_rate=0.0,
+                    ),
+                    block=TransformerBlockConfig(
+                        attention=AttentionConfig(
+                            d_model=d,
+                            n_heads=config.n_head,
+                            dropout_rate=0.0,
+                        ),
+                        mlp=DenseMLPConfig(d_model=d, expansion_factor=4.0),
+                        dropout_rate=0.0,
+                    ),
+                    n_layers=config.n_layer,
+                    max_seq_len=config.n_positions,
+                ),
+                nnx.Rngs(0),
+            )
+
+        return build_local_gpt2
 
     module_name, sep, func_name = spec.partition(":")
     if not sep:
@@ -36,10 +71,20 @@ def _load_factory() -> Callable[[Any], Any]:
 
 
 def test_hf_gpt2_logits_equivalence_after_mapping():
-    jnp = pytest.importorskip("jax.numpy")
-    np = pytest.importorskip("numpy")
-    torch = pytest.importorskip("torch")
-    transformers = pytest.importorskip("transformers")
+    required = os.environ.get("HF_EQUIV_REQUIRED") == "1"
+    if not required and "LOCAL_GPT2_FACTORY" not in os.environ:
+        pytest.skip("HF equivalence is opt-in locally; CI sets HF_EQUIV_REQUIRED=1")
+
+    if required:
+        import jax.numpy as jnp
+        import numpy as np
+        import torch
+        import transformers
+    else:
+        jnp = pytest.importorskip("jax.numpy")
+        np = pytest.importorskip("numpy")
+        torch = pytest.importorskip("torch")
+        transformers = pytest.importorskip("transformers")
 
     from alpacax.integrations.huggingface import model_mapper_or_raise
     from alpacax.models.gpt2.hf_mappings import hfgpt2_to_local_gpt2_rules
