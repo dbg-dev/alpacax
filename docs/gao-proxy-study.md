@@ -76,6 +76,35 @@ illustration. Do not subtract proxy and gold values as though their scales
 were calibrated. Repeat across seeds and training-data sizes before
 drawing conclusions about robustness or scaling.
 
+## Measured reference curve (default settings, seed 42)
+
+We ran the default alpacax example in
+[GitHub Actions](https://github.com/dbg-dev/alpacax/actions/runs/39419740309)
+and inspected its printed result table. This is an **actual run**, not a
+hand-drawn expected curve:
+
+| N | Trained proxy score | Gold after proxy selection | Gold oracle |
+|---:|---:|---:|---:|
+| 1 | 3.458 | 0.402 | 0.402 |
+| 2 | 5.876 | 0.676 | 0.696 |
+| 4 | 7.966 | 0.798 | 0.933 |
+| 8 | 9.711 | **0.868** | 1.129 |
+| 16 | 11.392 | 0.824 | 1.316 |
+| 32 | 13.404 | 0.581 | 1.472 |
+| 64 | 14.622 | 0.529 | 1.619 |
+| 128 | 16.179 | 0.341 | 1.775 |
+
+Held-out preference accuracy: **1.000**. Training and validation loss
+decreased over 12 epochs. Despite the high held-out accuracy, the
+proxy-selected **gold** score peaked at `N=8` and was about **61% lower**
+by `N=128`. The oracle continued to improve, demonstrating that the
+candidate pool still contained better gold-scoring choices. This is a
+constructed distribution-shift example; its numerical curve is **not**
+a fitted law from the paper. The proxy and gold score scales differ.
+
+You can regenerate the full CSV and inspect all baselines, selected length,
+and loss history with the marimo commands above.
+
 ## What is being trained?
 
 Each synthetic candidate has **two numbers**: `benefit` and `length`. A
