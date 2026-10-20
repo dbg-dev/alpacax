@@ -4,7 +4,7 @@ from flax.nnx import Dropout, Embed, LayerNorm, Module, Rngs
 from flax.nnx.helpers import List
 from flax.nnx.nn.linear import Linear
 from jax import Array
-from jax.numpy import arange
+from jax.numpy import arange  # pyright: ignore[reportUnknownVariableType]
 
 from alpacax.models.gpt2.attention import MultiHeadSelfAttention
 from alpacax.models.gpt2.config import (
@@ -108,6 +108,6 @@ class GPT2(Module):
 
         # weight tying
         if self.tie_embeddings:
-            return self.token_embedding.attend(x)
+            return self.token_embedding.attend(x)  # pyright: ignore[reportUnknownMemberType]
 
         return self.lm_head(x)

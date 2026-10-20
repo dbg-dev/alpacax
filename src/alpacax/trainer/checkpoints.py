@@ -130,8 +130,8 @@ def restore_training_state[ModelT: Module](
     restored = checkpointer.restore(target, path)
     completed_step = restored["metadata"]["step"]
     if (
-        not isinstance(completed_step, Integral)
-        or isinstance(completed_step, bool)
+        isinstance(completed_step, bool)
+        or not isinstance(completed_step, Integral)
         or completed_step < 0
     ):
         raise ValueError("Checkpoint metadata must contain a non-negative integer 'step'")

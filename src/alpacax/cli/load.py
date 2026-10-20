@@ -44,7 +44,7 @@ def run(args: CliArgs) -> int:
             print(f"pipeline failed: {error}")
             return 1
 
-    return 1
+    raise AssertionError("Unexpected Result variant")
 
 
 def main() -> int:

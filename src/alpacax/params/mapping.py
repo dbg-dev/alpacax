@@ -211,6 +211,8 @@ def partition_results[T, E](xs: Sequence[Result[T, E]]) -> tuple[list[T], list[E
                 oks.append(value)
             case Failure(error):
                 errs.append(error)
+            case _ as unexpected:
+                raise AssertionError(f"Unexpected mapping result: {type(unexpected)}")
 
     return oks, errs
 

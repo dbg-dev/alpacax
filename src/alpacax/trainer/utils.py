@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from jax import Array, device_get, process_index
+from jax import Array, device_get, process_index  # pyright: ignore[reportUnknownVariableType]
 
 
 def is_lead_process() -> bool:
