@@ -114,9 +114,7 @@ def gpt2_from_huggingface(model_name: str) -> tuple[GPT2, Any]:
             vocab_size=int(hf_config.vocab_size), d_model=dim, dropout_rate=0.0
         ),
         block=TransformerBlockConfig(
-            attention=AttentionConfig(
-                d_model=dim, n_heads=int(hf_config.n_head), dropout_rate=0.0
-            ),
+            attention=AttentionConfig(d_model=dim, n_heads=int(hf_config.n_head), dropout_rate=0.0),
             mlp=DenseMLPConfig(d_model=dim, expansion_factor=4.0),
             dropout_rate=0.0,
         ),
@@ -126,8 +124,11 @@ def gpt2_from_huggingface(model_name: str) -> tuple[GPT2, Any]:
     )
     local = GPT2(model_config, nnx.Rngs(0))
     model = model_mapper_or_raise(
-        hf_model, local, hfgpt2_to_local_gpt2_rules(int(hf_config.n_layer)),
-        strict=True, allow_unused_src=("lm_head.weight",),
+        hf_model,
+        local,
+        hfgpt2_to_local_gpt2_rules(int(hf_config.n_layer)),
+        strict=True,
+        allow_unused_src=("lm_head.weight",),
     )
     if not isinstance(model, GPT2):
         raise TypeError("Unexpected mapped model type")
@@ -178,9 +179,7 @@ def generate_token_ids(
         best_logits, best_ids = jax.lax.top_k(logits, top_k)
         split_keys = jax.vmap(lambda key: jax.random.split(key, 2))(keys)
         keys, sample_keys = split_keys[:, 0], split_keys[:, 1]
-        relative_ids = jax.vmap(jax.random.categorical)(
-            sample_keys, best_logits / temperature
-        )
+        relative_ids = jax.vmap(jax.random.categorical)(sample_keys, best_logits / temperature)
         sampled_ids = jnp.take_along_axis(best_ids, relative_ids[:, None], axis=1)[:, 0]
         tokens = tokens.at[:, position].set(sampled_ids)
 
@@ -217,20 +216,29 @@ def build_cache(settings: Settings) -> int:
                 for first in range(0, settings.candidates_per_prompt, settings.batch_size):
                     count = min(settings.batch_size, settings.candidates_per_prompt - first)
                     generated = generate_token_ids(
-                        model, prefix, start_index=first, count=count,
+                        model,
+                        prefix,
+                        start_index=first,
+                        count=count,
                         max_new_tokens=settings.max_new_tokens,
-                        top_k=settings.top_k, temperature=settings.temperature,
-                        seed=seed, eos_token_id=int(tokenizer.eos_token_id),
+                        top_k=settings.top_k,
+                        temperature=settings.temperature,
+                        seed=seed,
+                        eos_token_id=int(tokenizer.eos_token_id),
                     )
                     for offset, ids in enumerate(generated):
                         row = {
-                            "prompt_id": prompt.prompt_id, "split": prompt.split,
-                            "prompt": prompt.prompt, "target": prompt.target,
+                            "prompt_id": prompt.prompt_id,
+                            "split": prompt.split,
+                            "prompt": prompt.prompt,
+                            "target": prompt.target,
                             "candidate_index": first + offset,
                             "completion": tokenizer.decode(ids, skip_special_tokens=True),
-                            "token_ids": ids, "model_name": settings.model_name,
+                            "token_ids": ids,
+                            "model_name": settings.model_name,
                             "generation_seed": seed,
-                            "temperature": settings.temperature, "top_k": settings.top_k,
+                            "temperature": settings.temperature,
+                            "top_k": settings.top_k,
                             "max_new_tokens": settings.max_new_tokens,
                         }
                         target.write(json.dumps(row, ensure_ascii=False) + "\n")

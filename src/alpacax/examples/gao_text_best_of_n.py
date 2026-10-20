@@ -68,14 +68,19 @@ class Settings:
     weight_decay: float = 0.01
 
     def __post_init__(self) -> None:
-        if min(
-            self.max_features,
-            self.train_pairs_per_prompt,
-            self.validation_pairs_per_prompt,
-            self.batch_size,
-            self.epochs,
-        ) < 1:
-            raise ValueError("Feature dimension, pair counts, batch size and epochs must be positive")
+        if (
+            min(
+                self.max_features,
+                self.train_pairs_per_prompt,
+                self.validation_pairs_per_prompt,
+                self.batch_size,
+                self.epochs,
+            )
+            < 1
+        ):
+            raise ValueError(
+                "Feature dimension, pair counts, batch size and epochs must be positive"
+            )
         if self.learning_rate <= 0 or self.weight_decay < 0:
             raise ValueError("Invalid learning rate or regularization strength")
 
@@ -182,9 +187,7 @@ def pair_dataset(
             bad = negative[int(rng.integers(len(negative)))]
             choice = bool(rng.integers(2))
             ordered = (good, bad) if choice else (bad, good)
-            pairs.append(
-                np.stack([embeddings[(r.prompt_id, r.candidate_index)] for r in ordered])
-            )
+            pairs.append(np.stack([embeddings[(r.prompt_id, r.candidate_index)] for r in ordered]))
             labels.append(float(choice))
     if not pairs:
         raise ValueError(
@@ -256,19 +259,29 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
     featurizer = TfidfFeatures(settings.max_features)
     featurizer.fit(training_texts)  # A test completion must NEVER enter fit.
     values = featurizer.transform(texts)
-    embeddings = {(r.prompt_id, r.candidate_index): value for r, value in zip(rows, values, strict=True)}
+    embeddings = {
+        (r.prompt_id, r.candidate_index): value for r, value in zip(rows, values, strict=True)
+    }
     train_x, train_y, usable_train = pair_dataset(
-        grouped(rows, "train"), embeddings,
-        pairs_per_prompt=settings.train_pairs_per_prompt, seed=settings.seed,
+        grouped(rows, "train"),
+        embeddings,
+        pairs_per_prompt=settings.train_pairs_per_prompt,
+        seed=settings.seed,
     )
     valid_x, valid_y, usable_validation = pair_dataset(
-        grouped(rows, "validation"), embeddings,
-        pairs_per_prompt=settings.validation_pairs_per_prompt, seed=settings.seed + 1,
+        grouped(rows, "validation"),
+        embeddings,
+        pairs_per_prompt=settings.validation_pairs_per_prompt,
+        seed=settings.seed + 1,
     )
 
     loader = PairBatches(
-        train_x, train_y, settings.batch_size, settings.seed,
-        epochs=settings.epochs, shuffle=True,
+        train_x,
+        train_y,
+        settings.batch_size,
+        settings.seed,
+        epochs=settings.epochs,
+        shuffle=True,
     )
     evaluation_loader = PairBatches(valid_x, valid_y, settings.batch_size, settings.seed)
     steps_per_epoch = (len(train_y) + settings.batch_size - 1) // settings.batch_size
@@ -277,19 +290,25 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
     def factory() -> tuple[TextProxyReward, nnx.Optimizer[TextProxyReward]]:
         new_model = TextProxyReward(len(featurizer.vocabulary), nnx.Rngs(settings.seed))
         optimizer = nnx.Optimizer(
-            new_model, optax.adamw(settings.learning_rate, weight_decay=settings.weight_decay),
+            new_model,
+            optax.adamw(settings.learning_rate, weight_decay=settings.weight_decay),
             wrt=nnx.Param,
         )
         return new_model, optimizer
 
     model, optimizer = factory()
     train_phase = make_train_phase(
-        model=model, optimizer=optimizer, loader=loader,
-        metrics=nnx.MultiMetric(loss=nnx.metrics.Average("loss")), loss_fn=preference_loss,
+        model=model,
+        optimizer=optimizer,
+        loader=loader,
+        metrics=nnx.MultiMetric(loss=nnx.metrics.Average("loss")),
+        loss_fn=preference_loss,
     )
     eval_phase = make_eval_phase(
-        model=model, loader=evaluation_loader,
-        metrics=nnx.MultiMetric(loss=nnx.metrics.Average("loss")), loss_fn=preference_loss,
+        model=model,
+        loader=evaluation_loader,
+        metrics=nnx.MultiMetric(loss=nnx.metrics.Average("loss")),
+        loss_fn=preference_loss,
     )
     history: list[dict[str, object]] = []
     with TrainerCheckpointer(checkpoint_dir) as checkpointer:
@@ -310,8 +329,10 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
         restored_model.eval()  # pyright: ignore[reportUnknownMemberType]
         comparison = jnp.asarray(train_x[:2])  # pyright: ignore[reportUnknownMemberType]
         np.testing.assert_allclose(
-            np.asarray(model(comparison)), np.asarray(restored_model(comparison)),
-            rtol=1e-6, atol=1e-6,
+            np.asarray(model(comparison)),
+            np.asarray(restored_model(comparison)),
+            rtol=1e-6,
+            atol=1e-6,
         )
 
     valid_scores = np.asarray(model(jnp.asarray(valid_x)))  # pyright: ignore[reportUnknownMemberType]
@@ -319,8 +340,11 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
     accuracy = float(np.mean(valid_predicted == (valid_y > 0)))
     bon = best_of_n_text(grouped(rows, "test"), embeddings, model)
     summary: dict[str, object] = {
-        "settings": {**asdict(settings), "cache_path": str(settings.cache_path),
-                     "output_dir": str(settings.output_dir)},
+        "settings": {
+            **asdict(settings),
+            "cache_path": str(settings.cache_path),
+            "output_dir": str(settings.output_dir),
+        },
         "source": "cached frozen GPT-2 text completions",
         "feature_type": "training-only TF-IDF unigram + bigram",
         "gold": "binary exact target phrase in completion (not human quality)",

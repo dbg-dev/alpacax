@@ -68,8 +68,12 @@ def test_tiny_nnx_sampler_repeatable_across_batch_sizes() -> None:
     model = GPT2(config, nnx.Rngs(0))
     model.eval()
     args = dict(
-        prompt_ids=[1, 2, 3], max_new_tokens=4, top_k=8, temperature=0.9,
-        seed=123, eos_token_id=31,
+        prompt_ids=[1, 2, 3],
+        max_new_tokens=4,
+        top_k=8,
+        temperature=0.9,
+        seed=123,
+        eos_token_id=31,
     )
     together = generate_token_ids(model, start_index=0, count=2, **args)
     separate = [
@@ -105,9 +109,12 @@ def _cache(tmp_path: Path) -> Path:
         ):
             content.append(
                 {
-                    "prompt_id": f"{split}-p0", "split": split,
-                    "prompt": "At the harbor: ", "target": "the",
-                    "candidate_index": candidate_id, "completion": completion,
+                    "prompt_id": f"{split}-p0",
+                    "split": split,
+                    "prompt": "At the harbor: ",
+                    "target": "the",
+                    "candidate_index": candidate_id,
+                    "completion": completion,
                     "token_ids": [10, 20, 30][: (candidate_id % 3) + 1],
                     "model_name": "tiny-test",
                 }
@@ -121,9 +128,13 @@ def test_text_study_end_to_end_with_real_nnx_train_and_restore(tmp_path: Path) -
     rows = load_cache(cache)
     assert len(rows) == 12
     settings = StudySettings(
-        cache_path=cache, output_dir=tmp_path / "results",
-        train_pairs_per_prompt=8, validation_pairs_per_prompt=4,
-        epochs=2, batch_size=4, max_features=16,
+        cache_path=cache,
+        output_dir=tmp_path / "results",
+        train_pairs_per_prompt=8,
+        validation_pairs_per_prompt=4,
+        epochs=2,
+        batch_size=4,
+        max_features=16,
     )
     bon, summary = run_study(settings)
     assert [row["n"] for row in bon] == [1, 2, 4]
@@ -145,6 +156,4 @@ def test_missing_gold_preference_pairs_fail_loudly(tmp_path: Path) -> None:
             row["completion"] = "no target word"
     cache.write_text("\n".join(json.dumps(row) for row in records) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="No informative gold preference pairs"):
-        run_study(
-            StudySettings(cache_path=cache, output_dir=tmp_path / "results", epochs=1)
-        )
+        run_study(StudySettings(cache_path=cache, output_dir=tmp_path / "results", epochs=1))
