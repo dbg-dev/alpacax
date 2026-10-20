@@ -3,12 +3,14 @@
 import importlib.util
 import sys
 
-from alpacax import PipelineConfig, SplitConfig
+from alpacax import PipelineConfig, PreparedSample, SplitConfig, build_unpadded_dataset
 from alpacax.params.mapping import TransformKind, infer_transform
 from alpacax.trainer.loggers import ConsoleLogger, WandbLogger
 
 assert PipelineConfig(max_seq_len=8, eos_token_id=0)
 assert SplitConfig(train=0.8, validation=0.1, test=0.1)
+assert PreparedSample(input_ids=[1], labels=[2])
+assert callable(build_unpadded_dataset)
 assert infer_transform((2, 3), (3, 2), TransformKind.AUTO) is TransformKind.TRANSPOSE_LAST_TWO
 assert ConsoleLogger is not None
 assert WandbLogger is not None

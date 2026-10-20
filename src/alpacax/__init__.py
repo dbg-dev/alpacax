@@ -1,11 +1,12 @@
 from alpacax.pipelines.instruction.config import PipelineConfig
-from alpacax.pipelines.instruction.runner import build_dataset
+from alpacax.pipelines.instruction.runner import build_dataset, build_unpadded_dataset
 from alpacax.types.errors import PipelineError, RowError
 from alpacax.types.models import (
     AlpacaSample,
     DatasetSplit,
     Instruction,
     PaddedSample,
+    PreparedSample,
     SplitConfig,
     TokenizedSample,
 )
@@ -15,10 +16,12 @@ __all__ = (
     "DatasetSplit",
     "Instruction",
     "PaddedSample",
+    "PreparedSample",
     "PipelineConfig",
     "PipelineError",
     "RowError",
     "SplitConfig",
     "TokenizedSample",
     "build_dataset",
+    "build_unpadded_dataset",
 )

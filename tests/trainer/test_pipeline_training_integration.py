@@ -13,9 +13,9 @@ from jax import Array
 from returns.result import Success
 
 from alpacax.pipelines.instruction.config import PipelineConfig
-from alpacax.pipelines.instruction.runner import build_dataset
+from alpacax.pipelines.instruction.runner import build_dataset, build_unpadded_dataset
 from alpacax.trainer.core import run
-from alpacax.trainer.data import PaddedBatchLoader
+from alpacax.trainer.data import BucketedBatchLoader, PaddedBatchLoader
 from alpacax.trainer.factories import make_runner, make_train_phase
 from alpacax.trainer.losses import masked_cross_entropy_loss
 from alpacax.types.models import SplitConfig
@@ -85,3 +85,65 @@ def test_pipeline_output_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch) 
     assert int(optimizer.step.value) == 2
     # Eval and subsequent epochs can request a fresh iterator.
     assert len(list(loader)) == 2
+
+
+def test_unpadded_pipeline_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = [
+        {
+            "instruction": f"Say hello {i}",
+            "output": " ".join(["hello"] * (1 + i * 7)),
+        }
+        for i in range(4)
+    ]
+
+    class Response:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> list[dict[str, str]]:
+            return rows
+
+    monkeypatch.setattr(
+        "alpacax.pipelines.instruction.pipeio.requests.get",
+        lambda url, timeout: Response(),
+    )
+    config = PipelineConfig(
+        max_seq_len=64,
+        weights=SplitConfig(train=1.0, validation=0.0, test=0.0),
+        eos_token_id=2,
+        mask_prompt_labels=True,
+    )
+    result = build_unpadded_dataset(
+        "https://example.test/alpaca.json", WordTokenizer(), config
+    )
+    assert isinstance(result, Success)
+    records = result.unwrap().train
+    assert len(records) == 4
+    assert len({len(record.input_ids) for record in records}) > 1
+    assert all(len(record.input_ids) < config.max_seq_len - 1 for record in records)
+    assert all(any(label != config.ignore_index for label in record.labels) for record in records)
+
+    loader = BucketedBatchLoader(
+        records,
+        batch_size=2,
+        bucket_lengths=(16, 32, 64),
+        pad_token=config.pad_token,
+        ignore_index=config.ignore_index,
+        shuffle=True,
+        seed=config.seed,
+    )
+    assert sum(x.shape[0] for x, _ in loader) == len(records)
+    assert all(x.shape[1] in (16, 32, 64) for x, _ in loader)
+    assert len(loader) >= 2
+
+    model = TinyLanguageModel(nnx.Rngs(0))
+    optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
+    train = make_train_phase(
+        model=model,
+        optimizer=optimizer,
+        loader=loader,
+        metrics=nnx.MultiMetric(loss=nnx.metrics.Average("loss")),
+        loss_fn=partial(masked_cross_entropy_loss, ignore_index=config.ignore_index),
+    )
+    run(make_runner(train=train, max_steps=2))
+    assert int(optimizer.step.value) == 2
