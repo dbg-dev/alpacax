@@ -1,6 +1,6 @@
 # Replacing synthetic candidates with frozen GPT-2 completions
 
-This is the **next experimental stage** after the [Gao synthetic sanity check](gao-proxy-study.md).
+This is the **completed real-model integration exercise** that followed the [Gao synthetic sanity check](gao-proxy-study.md).
 Reference: [Gao, Schulman & Hilton (arXiv:2210.10760)](https://arxiv.org/abs/2210.10760).
 
 It uses `alpacax.models.gpt2.GPT2` for actual autoregressive generation. The
@@ -99,10 +99,35 @@ Outputs use the **same schema** as the synthetic example:
 A test split with eight candidates supports `N=1,2,4,8`; increasing the
 cached candidate count enables longer sweeps.
 
+## Observed pretrained GPT-2 124M integration result
+
+The [20 October 2026 CI run](https://github.com/dbg-dev/alpacax/actions/runs/39421817048)
+completed this exact type of workflow with the public pretrained GPT-2 124M
+checkpoint: **64 real continuations**, independent text-proxy training,
+held-out evaluation, Orbax restoration and best-of-N reporting. All
+integration steps succeeded.
+
+This is an **engineering result**, not a reward-overoptimization result:
+
+- Held-out preference accuracy was **56.25%**.
+- The two test prompts contained respectively **8/8 positive** and
+  **0/8 positive** gold labels; there was no variation *within* either
+  prompt.
+- Therefore the gold, oracle and random baseline curves all stayed flat
+  at **0.5** for `N=1,2,4,8`. The proxy's increasing score did not
+  translate into an interpretable gold comparison.
+- All sampled continuations reached the 20-token cap, so the selected-length
+  diagnostic also lacked variation.
+
+See [research-examples.md](research-examples.md) for the summary and
+[experiment PR #16](https://github.com/dbg-dev/alpacax/pull/16) for the run
+record (the temporary CI experiment PR was closed, unmerged). No model
+weights or output cache are committed to this repository.
+
 ## 4. Open the same marimo curves notebook
 
-After the [marimo notebook PR](../notebooks/gao_best_of_n.py) is merged,
-from the repository root run:
+The [marimo notebook](../notebooks/gao_best_of_n.py) is included in the repository.
+From the repository root run:
 
 ```sh
 uv run --extra train --with marimo --with matplotlib \

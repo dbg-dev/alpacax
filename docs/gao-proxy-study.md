@@ -2,7 +2,7 @@
 
 [**Gao, Schulman & Hilton, *Scaling Laws for Reward Model Overoptimization***](https://arxiv.org/abs/2210.10760) ([arXiv:2210.10760](https://arxiv.org/abs/2210.10760); ICML 2023, [PMLR](https://proceedings.mlr.press/v202/gao23h.html)) examines
 what happens when a policy is optimized against an imperfect reward-model proxy.
-We plan to start with **best-of-N (BoN)**, *not* PPO.
+The experiment uses **best-of-N (BoN)**, *not* PPO.
 
 This small script validates that alpacax can train and checkpoint an **independent
 Bradley–Terry proxy reward model**, evaluate it on held-out preferences, and
@@ -165,31 +165,21 @@ effect. The gold function and distribution shift here are *deliberately
 constructed* to illustrate a failure mode. We do not fit the paper's scaling
 coefficients or compare quantitative results to it.
 
-## From this sanity check to our small research exercise
+## What followed: pretrained GPT-2 integration
 
-The planned research study uses **frozen pretrained GPT-2 124M** as the
-*generator*, separately trains a proxy reward model, and starts with BoN before
-considering PPO. The progression is:
+The synthetic example was followed by a **completed engineering integration
+test**, using a frozen pretrained GPT-2 124M generator with cached
+completions and an independent text-feature Bradley–Terry proxy.
 
-1. **Replace the synthetic candidate pool with cached GPT-2 completions** for
-   held-out instruction prompts. Cache prompt IDs, token IDs/text, sampling
-   settings, and seeds. Keep training and evaluation prompts disjoint.
-2. **Define a deterministic gold evaluator** and build preference comparisons
-   on training prompts only. Keep this evaluator separate from the learned
-   Bradley–Terry proxy; never train the proxy on held-out candidates.
-3. **Replace two numeric features with a text-based reward model**, initially
-   modest in size. The loss and alpacax training/evaluation/checkpoint boundary
-   can remain the same, but tokenization, score extraction, and batch handling
-   will change.
-4. Run the `1, 2, 4, …, 128` BoN sweep with **random, gold-oracle and
-   length-only** controls; record proxy score, gold score, preference accuracy
-   and selected length. Repeat across multiple seeds and proxy-data sizes.
-5. Only once the pipeline is validated, investigate scaling-law fits or a PPO
-   follow-up.
+That pilot exercised actual pretrained-model loading, train/validation/test
+prompt splits, generation, preference training, checkpoint restore and best-of-N
+reporting. It **did not** reproduce Gao et al.'s reward-overoptimization
+results: its small held-out test prompts had no *within-prompt* gold-label
+variation, so their aggregate gold-reward curve was flat.
 
-This separation lets us debug the experimental harness *before* coupling
-research outcomes to GPT-2 generation or reward-model architecture.
-
-For instruction SFT inputs and bucketed batches, see
-[training-data.md](training-data.md); for checkpoint lifecycle semantics,
+See the [research examples index](research-examples.md) for what was
+validated and the observed results, and the
+[frozen GPT-2 experiment guide](gao-gpt2-candidates.md) for commands and
+methodological limitations. For instruction SFT inputs and bucketed batches,
+see [training-data.md](training-data.md); for checkpoint lifecycle semantics,
 see [checkpointing.md](checkpointing.md).
