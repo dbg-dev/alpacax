@@ -53,6 +53,7 @@ def _process_instructions(
 
     return _process_records(data, tokenizer, config, process_instruction)
 
+
 def process_instructions(
     tokenizer: Tokenizer,
     config: PipelineConfig,
