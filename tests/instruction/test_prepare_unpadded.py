@@ -10,9 +10,7 @@ from alpacax.types.models import PreparedSample, TokenizedSample
 
 
 def test_unpadded_preserves_shift_and_first_response_target() -> None:
-    sample = TokenizedSample(
-        prompt_tokens=[10, 11, 12], response_tokens=[20, 21]
-    )
+    sample = TokenizedSample(prompt_tokens=[10, 11, 12], response_tokens=[20, 21])
     result = prepare_unpadded_sample(
         sample,
         truncation="skip",
