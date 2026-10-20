@@ -171,7 +171,7 @@ def pair_dataset(
     pairs: list[np.ndarray] = []
     labels: list[float] = []
     usable_prompts = 0
-    for prompt_id, candidates in sorted(rows.items()):
+    for _prompt_id, candidates in sorted(rows.items()):
         positive = [r for r in candidates if gold_binary(r.completion, r.target) == 1.0]
         negative = [r for r in candidates if gold_binary(r.completion, r.target) == 0.0]
         if not positive or not negative:
