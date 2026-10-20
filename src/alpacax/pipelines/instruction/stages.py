@@ -52,7 +52,6 @@ def prepare(
     )
 
 
-
 def prepare_unpadded(config: PipelineConfig):
     return safe(
         partial(
@@ -64,6 +63,7 @@ def prepare_unpadded(config: PipelineConfig):
             mask_prompt_labels=config.mask_prompt_labels,
         )
     )
+
 
 def _shuffle_split[T](
     processed: tuple[list[T], list[DatasetError]],
