@@ -95,9 +95,7 @@ class BucketedBatchLoader:
     shuffle: bool = False
     seed: int = 42
     drop_last: bool = False
-    _groups: tuple[tuple[int, tuple[int, ...]], ...] = field(
-        init=False, repr=False, compare=False
-    )
+    _groups: tuple[tuple[int, tuple[int, ...]], ...] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.batch_size <= 0:
@@ -107,13 +105,17 @@ class BucketedBatchLoader:
             or any(length <= 0 for length in self.bucket_lengths)
             or self.bucket_lengths != tuple(sorted(set(self.bucket_lengths)))
         ):
-            raise ValueError("bucket_lengths must be nonempty, strictly increasing positive integers")
+            raise ValueError(
+                "bucket_lengths must be nonempty, strictly increasing positive integers"
+            )
 
         groups: dict[int, list[int]] = {length: [] for length in self.bucket_lengths}
         for index, sample in enumerate(self.samples):
             length = len(sample.input_ids)
             if length == 0 or len(sample.labels) != length:
-                raise ValueError("Prepared samples must contain equal-length, nonempty inputs and labels")
+                raise ValueError(
+                    "Prepared samples must contain equal-length, nonempty inputs and labels"
+                )
             bucket = next((size for size in self.bucket_lengths if length <= size), None)
             if bucket is None:
                 raise ValueError(
@@ -152,12 +154,8 @@ class BucketedBatchLoader:
             rng.shuffle(batches)
 
         for bucket, indices in batches:
-            inputs = np.full(
-                (len(indices), bucket), self.pad_token, dtype=np.int32
-            )
-            labels = np.full(
-                (len(indices), bucket), self.ignore_index, dtype=np.int32
-            )
+            inputs = np.full((len(indices), bucket), self.pad_token, dtype=np.int32)
+            labels = np.full((len(indices), bucket), self.ignore_index, dtype=np.int32)
             for row, index in enumerate(indices):
                 sample = self.samples[index]
                 length = len(sample.input_ids)
