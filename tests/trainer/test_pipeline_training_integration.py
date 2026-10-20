@@ -1,4 +1,5 @@
 """Train a real NNX model using batches built from the instruction pipeline."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -34,10 +35,7 @@ class TinyLanguageModel(nnx.Module):
 
 
 def test_pipeline_output_trains_real_nnx_model(monkeypatch) -> None:
-    rows = [
-        {"instruction": f"Say hello {i}", "output": f"Hello number {i}!"}
-        for i in range(4)
-    ]
+    rows = [{"instruction": f"Say hello {i}", "output": f"Hello number {i}!"} for i in range(4)]
 
     class Response:
         def raise_for_status(self) -> None:
