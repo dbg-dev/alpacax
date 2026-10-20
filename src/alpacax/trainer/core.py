@@ -24,6 +24,8 @@ def run[TrainT: AnyTrainPhase](runner: Runner[TrainT]) -> None:
     """
     if runner.max_steps is not None and runner.max_steps <= 0:
         raise ValueError("max_steps must be positive")
+    if runner.start_step < 0:
+        raise ValueError("start_step must be non-negative")
 
     runner.train.model.train()
     batches = iter(runner.train.loader)
@@ -31,7 +33,7 @@ def run[TrainT: AnyTrainPhase](runner: Runner[TrainT]) -> None:
         batches = islice(batches, runner.max_steps)
 
     last_ctx: HookContext | None = None
-    for step, (x, y) in enumerate(batches, start=1):
+    for step, (x, y) in enumerate(batches, start=runner.start_step + 1):
         runner.train.step(
             runner.train.model,
             runner.train.optimizer,
