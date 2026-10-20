@@ -213,6 +213,7 @@ def test_run_with_short_loader_uses_actual_final_step() -> None:
 
     assert seen == [2]
 
+
 def test_resumed_runner_uses_global_step_for_hooks() -> None:
     seen: list[int] = []
     train = make_train_phase(loader=[(1, 1), (2, 2), (3, 3)])
