@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import builtins
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -12,7 +13,7 @@ from alpacax.trainer.loggers import WandbLogger
 def test_wandb_logger_reports_missing_extra(monkeypatch: pytest.MonkeyPatch) -> None:
     original_import = builtins.__import__
 
-    def fail_wandb(name, *args, **kwargs):
+    def fail_wandb(name: str, *args: Any, **kwargs: Any) -> ModuleType:
         if name == "wandb":
             raise ModuleNotFoundError("No module named 'wandb'")
         return original_import(name, *args, **kwargs)
@@ -25,11 +26,16 @@ def test_wandb_logger_reports_missing_extra(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_wandb_logger_imports_on_construction(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, object]] = []
-    fake_wandb = SimpleNamespace(
-        init=lambda **kw: calls.append(("init", kw)),
-        log=lambda metrics, step: calls.append(("log", (metrics, step))),
-        finish=lambda: calls.append(("finish", None)),
-    )
+    def fake_init(**kw: object) -> None:
+        calls.append(("init", kw))
+
+    def fake_log(metrics: dict[str, float], step: int) -> None:
+        calls.append(("log", (metrics, step)))
+
+    def fake_finish() -> None:
+        calls.append(("finish", None))
+
+    fake_wandb = SimpleNamespace(init=fake_init, log=fake_log, finish=fake_finish)
     monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
 
     logger = WandbLogger("test", {"seed": 42})
