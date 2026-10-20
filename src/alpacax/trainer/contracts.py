@@ -22,8 +22,8 @@ class Checkpointer[StateT](Protocol):
         """Persist state and return the checkpoint path."""
         ...
 
-    def restore(self, path: Path | None = None) -> StateT:
-        """Restore from a specific checkpoint, or latest if omitted."""
+    def restore(self, target: StateT, path: Path | None = None) -> StateT:
+        """Restore using the target structure/sharding, latest if path omitted."""
         ...
 
     def latest(self) -> Path | None:
@@ -32,6 +32,10 @@ class Checkpointer[StateT](Protocol):
 
     def exists(self) -> bool:
         """Return whether a checkpoint is available."""
+        ...
+
+    def wait_until_finished(self) -> None:
+        """Wait for asynchronous saves to finish."""
         ...
 
     def close(self) -> None:
@@ -120,3 +124,4 @@ class Runner[TrainT: AnyTrainPhase]:
     eval: AnyEvalPhase | None = None
     hooks: tuple[HookEntry, ...] = ()
     max_steps: int | None = None
+    start_step: int = 0
