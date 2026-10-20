@@ -37,6 +37,8 @@ jobs:
         run: uv run --no-sync ruff format --check src tests devtools
       - name: BasedPyright
         run: uv run --no-sync basedpyright
+      - name: Marimo notebook lint
+        run: uv run --with marimo marimo check notebooks/gao_best_of_n.py
 
   build:
     strategy:

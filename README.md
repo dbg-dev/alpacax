@@ -65,9 +65,18 @@ uv run --extra train python -m alpacax.examples.gao_proxy_sanity \
 
 This **small synthetic integration experiment** requires no model downloads.
 It is intentionally *not* a reproduction of Gao et al.'s scaling-law results.
-The [research guide](docs/gao-proxy-study.md) explains how to replace its
-synthetic candidates with cached frozen GPT-2 completions for the planned
-best-of-N study.
+The [interactive marimo notebook](notebooks/gao_best_of_n.py)
+plots the saved best-of-N curves and training-loss history:
+
+```sh
+uv run --extra train --with marimo --with matplotlib \
+    marimo edit notebooks/gao_best_of_n.py
+```
+
+In the notebook enter `runs/gao-sanity-42` as the run directory.
+See the [research guide](docs/gao-proxy-study.md) and the
+[Gao et al. paper on arXiv](https://arxiv.org/abs/2210.10760)
+for experimental context and the path to cached GPT-2 completions.
 
 * * *
 

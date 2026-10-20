@@ -1,7 +1,6 @@
 # Reproducible proxy reward training: a Gao-inspired sanity check
 
-[**Gao, Schulman & Hilton (2023), *Scaling Laws for Reward Model
-Overoptimization***](https://proceedings.mlr.press/v202/gao23h.html) examines
+[**Gao, Schulman & Hilton, *Scaling Laws for Reward Model Overoptimization***](https://arxiv.org/abs/2210.10760) ([arXiv:2210.10760](https://arxiv.org/abs/2210.10760); ICML 2023, [PMLR](https://proceedings.mlr.press/v202/gao23h.html)) examines
 what happens when a policy is optimized against an imperfect reward-model proxy.
 We plan to start with **best-of-N (BoN)**, *not* PPO.
 
@@ -36,6 +35,75 @@ Output:
 
 Each run checks restored model predictions against the trained model before
 writing results. It fails rather than silently accepting a broken restore.
+
+## Inspect the curves with marimo
+
+The [reactive notebook](../notebooks/gao_best_of_n.py) reads the files written by
+the training script. It **does not train a model automatically**, so changing
+controls cannot accidentally overwrite checkpoints. From the repository root:
+
+```sh
+# 1. Generate data once; choose a fresh output directory for each run.
+uv run --extra train python -m alpacax.examples.gao_proxy_sanity \
+    --seed 42 --output-dir runs/gao-sanity-42
+
+# 2. Open the notebook. --with avoids changing pyproject.toml or uv.lock.
+uv run --extra train --with marimo --with matplotlib \
+    marimo edit notebooks/gao_best_of_n.py
+
+# To run it read-only as an interactive app:
+uv run --extra train --with marimo --with matplotlib \
+    marimo run notebooks/gao_best_of_n.py
+```
+
+In the notebook, enter `runs/gao-sanity-42` as the **run directory**.
+You can switch between `N` and theoretical `sqrt(KL)`, toggle
+random/gold-oracle controls, and inspect selected response length, per-epoch
+train/validation loss and all raw CSV rows.
+
+### Expected shape of the *constructed* synthetic curves
+
+Our toy gold function rewards length only up to a threshold; beyond that,
+it penalizes extreme length. The proxy is linear and sees comparisons only
+in the safe length range. Consequently, proxy reward will typically rise
+monotonically with `N` while gold reward may **first rise and then fall**.
+The random baseline and gold oracle should remain sensible anchors.
+
+**Measure this rather than assuming it.** A real run may have noisy,
+seed-dependent behavior. The gold score from `best_of_n.csv` is the
+proper evidence; a curve produced with hand-chosen weights is only an
+illustration. Do not subtract proxy and gold values as though their scales
+were calibrated. Repeat across seeds and training-data sizes before
+drawing conclusions about robustness or scaling.
+
+## Measured reference curve (default settings, seed 42)
+
+We ran the default alpacax example in
+[GitHub Actions](https://github.com/dbg-dev/alpacax/actions/runs/39419740309)
+and inspected its printed result table. This is an **actual run**, not a
+hand-drawn expected curve:
+
+| N | Trained proxy score | Gold after proxy selection | Gold oracle |
+|---:|---:|---:|---:|
+| 1 | 3.458 | 0.402 | 0.402 |
+| 2 | 5.876 | 0.676 | 0.696 |
+| 4 | 7.966 | 0.798 | 0.933 |
+| 8 | 9.711 | **0.868** | 1.129 |
+| 16 | 11.392 | 0.824 | 1.316 |
+| 32 | 13.404 | 0.581 | 1.472 |
+| 64 | 14.622 | 0.529 | 1.619 |
+| 128 | 16.179 | 0.341 | 1.775 |
+
+Held-out preference accuracy: **1.000**. Training and validation loss
+decreased over 12 epochs. Despite the high held-out accuracy, the
+proxy-selected **gold** score peaked at `N=8` and was about **61% lower**
+by `N=128`. The oracle continued to improve, demonstrating that the
+candidate pool still contained better gold-scoring choices. This is a
+constructed distribution-shift example; its numerical curve is **not**
+a fitted law from the paper. The proxy and gold score scales differ.
+
+You can regenerate the full CSV and inspect all baselines, selected length,
+and loss history with the marimo commands above.
 
 ## What is being trained?
 
