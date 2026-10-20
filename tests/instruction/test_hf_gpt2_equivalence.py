@@ -113,6 +113,8 @@ def test_hf_gpt2_logits_equivalence_after_mapping():
         src_model=hf_model,
         flax_model=local_model,
         rules=hfgpt2_to_local_gpt2_rules(hf_config.n_layer),
+        strict=True,
+        allow_unused_src=("lm_head.weight",),  # tied to transformer.wte.weight
     )
 
     token_ids = [[1, 2, 3, 4]]
