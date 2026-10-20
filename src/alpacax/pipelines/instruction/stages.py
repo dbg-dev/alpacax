@@ -76,11 +76,20 @@ def _shuffle_split[T](
     return split
 
 
-def shuffle_split[T](
+def shuffle_split(
     config: PipelineConfig,
 ) -> Callable[
-    [tuple[list[T], list[DatasetError]]],
-    DatasetSplit[T, DatasetError],
+    [tuple[list[PaddedSample], list[DatasetError]]],
+    DatasetSplit[PaddedSample, DatasetError],
+]:
+    return partial(_shuffle_split, seed=config.seed, weights=config.weights)
+
+
+def shuffle_split_unpadded(
+    config: PipelineConfig,
+) -> Callable[
+    [tuple[list[PreparedSample], list[DatasetError]]],
+    DatasetSplit[PreparedSample, DatasetError],
 ]:
     return partial(_shuffle_split, seed=config.seed, weights=config.weights)
 
