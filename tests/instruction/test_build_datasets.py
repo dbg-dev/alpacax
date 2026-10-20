@@ -14,7 +14,7 @@ def test_build_dataset_success():
 
     raw = [{"instruction": "i", "output": "o"}]
     validated = [{"input": "x"}]
-    processed = (["sample"], [])
+    processed: tuple[list[str], list[object]] = (["sample"], [])
     split = Mock(name="split")
 
     with (

@@ -120,9 +120,9 @@ def test_hf_gpt2_logits_equivalence_after_mapping():
     token_ids = [[1, 2, 3, 4]]
 
     with torch.no_grad():
-        hf_logits = hf_model(torch.tensor(token_ids)).logits.detach().cpu().numpy()
+        hf_logits = hf_model(torch.as_tensor(token_ids)).logits.detach().cpu().numpy()
 
-    local_out = mapped_model(jnp.asarray(token_ids))
+    local_out = mapped_model(jnp.asarray(token_ids))  # pyright: ignore[reportUnknownMemberType]
     local_logits = getattr(local_out, "logits", local_out)
 
     np.testing.assert_allclose(np.asarray(local_logits), hf_logits, rtol=1e-4, atol=1e-4)
