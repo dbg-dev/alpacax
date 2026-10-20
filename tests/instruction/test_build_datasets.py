@@ -54,7 +54,8 @@ def test_build_dataset_short_circuits_on_fetch_failure():
 
     error = RuntimeError("fetch failed")
 
-    process_fn = Mock(return_value=Success(([], [])))
+    empty_processed: tuple[list[str], list[object]] = ([], [])
+    process_fn = Mock(return_value=Success(empty_processed))
     shuffle_fn = Mock(return_value=Success(Mock(name="split")))
 
     with (

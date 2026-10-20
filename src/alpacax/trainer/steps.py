@@ -63,7 +63,7 @@ def make_eval_step[ModelT: Module](
     ) -> None:
         loss, logits = loss_fn(model, x, y)
 
-        metrics.update(
+        metrics.update(  # pyright: ignore[reportUnknownMemberType]
             loss=loss,
             logits=logits,
             labels=y,

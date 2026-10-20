@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import tyro
-from returns.result import Failure, Success
+from returns.result import Success
 
 from alpacax.pipelines.instruction.config import PipelineConfig
 from alpacax.pipelines.instruction.runner import build_dataset
@@ -32,19 +32,16 @@ def run(args: CliArgs) -> int:
         ),
     )
 
-    match result:
-        case Success(split):
-            print(f"train={len(split.train)}")
-            print(f"validation={len(split.validation)}")
-            print(f"test={len(split.test)}")
-            print(f"skipped={len(split.skipped or [])}")
-            return 0
+    if isinstance(result, Success):
+        split = result.unwrap()
+        print(f"train={len(split.train)}")
+        print(f"validation={len(split.validation)}")
+        print(f"test={len(split.test)}")
+        print(f"skipped={len(split.skipped or [])}")
+        return 0
 
-        case Failure(error):
-            print(f"pipeline failed: {error}")
-            return 1
-
-    raise AssertionError("Unexpected Result variant")
+    print(f"pipeline failed: {result.failure()}")
+    return 1
 
 
 def main() -> int:

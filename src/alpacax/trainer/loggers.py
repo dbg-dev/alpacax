@@ -27,7 +27,7 @@ class WandbLogger:
                 "`pip install 'alpacax[wandb]'` or `uv sync --extra wandb`."
             ) from exc
 
-        self._wandb: _WandbAPI = cast(_WandbAPI, wandb)
+        self._wandb: _WandbAPI = cast(_WandbAPI, cast(object, wandb))
         self._wandb.init(project=project, config=dict(config or {}))
 
     def log(self, metrics: dict[str, float], step: int) -> None:

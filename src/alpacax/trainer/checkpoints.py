@@ -5,7 +5,12 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from flax.nnx import Module, Optimizer, state, update
+from flax.nnx import (
+    Module,
+    Optimizer,
+    state,  # pyright: ignore[reportUnknownVariableType]
+    update,  # pyright: ignore[reportUnknownVariableType]
+)
 from orbax.checkpoint import CheckpointManager, CheckpointManagerOptions, args
 
 from .contracts import Checkpointer, CheckpointPayload
