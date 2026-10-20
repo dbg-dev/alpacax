@@ -3,6 +3,7 @@
 This adapter belongs to the optional training integration, not the core
 instruction pipeline: importing the core package does not require JAX/NumPy.
 """
+
 from __future__ import annotations
 
 import random
