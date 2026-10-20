@@ -9,6 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from flax import nnx
+from jax import Array
 from returns.result import Failure, Success
 
 from alpacax.integrations.huggingface import (
@@ -33,7 +34,9 @@ def test_prepare_and_rebuild_preserves_non_array_state() -> None:
 
     graphdef, flattened = prepare_target(model)
     assert flattened[("counter",)] == 7
-    assert jnp.array_equal(flattened[("buffer",)], jnp.array([99.0]))
+    buffer = flattened[("buffer",)]
+    assert isinstance(buffer, Array)
+    assert jnp.array_equal(buffer, jnp.array([99.0]))
     assert isinstance(flattened[("weight",)], type(jnp.array([1.0])))
 
     # A mapped parameter can change without losing unrelated scalar state.
