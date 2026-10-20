@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Collection, Hashable, Mapping, Sequence
 from typing import Any, Protocol, Self, cast
 
-from flax.nnx import GraphDef, Module, merge, split, to_pure_dict
+from flax.nnx import GraphDef, Module, Param, merge, split, state, to_pure_dict
 from flax.traverse_util import flatten_dict, unflatten_dict
 from jax import Array
 from jax.numpy import array, swapaxes
@@ -81,9 +81,9 @@ def model_mapper(
     """Map HF/PyTorch parameters into a Flax NNX model.
 
     By default, unmapped array targets keep their initial values. With
-    strict=True, every array-valued destination and source key must be
-    covered by the rules unless explicitly excepted. Non-array NNX state
-    is always preserved, and is not considered a destination for coverage.
+    strict=True, every array-valued NNX Param and source key must be
+    covered by rules unless explicitly excepted. Non-parameter state such
+    as RNG keys/counters and buffers is preserved without requiring rules.
 
     Some HF models expose aliases for tied weights (e.g. lm_head.weight).
     List them explicitly in allow_unused_src rather than implicitly ignoring
@@ -98,6 +98,17 @@ def model_mapper(
         key: value for key, value in pre.items() if isinstance(value, Array)
     }
 
+    # Not every NNX array is a model parameter. In particular, RngState holds
+    # JAX array keys and counters. Strict coverage should require weights to
+    # be mapped, not RNG/bookkeeping state carried over from the local model.
+    # Keep all array destinations eligible for explicitly declared rules to
+    # preserve the existing permissive adapter behavior.
+    ignored_non_params: set[ModelParamKey] = set()
+    if strict:
+        param_state = state(flax_model, Param)
+        param_keys = set(flatten_dict(to_pure_dict(param_state)))
+        ignored_non_params = array_targets.keys() - param_keys
+
     result = map_param_dict(
         src=src,
         dst=array_targets,
@@ -105,7 +116,7 @@ def model_mapper(
         convert=torch_to_jax,
         transpose_last_two=transpose_torch_last_two,
         strict=strict,
-        allow_unmapped_dst=allow_unmapped_dst,
+        allow_unmapped_dst=set(allow_unmapped_dst) | ignored_non_params,
         allow_unused_src=allow_unused_src,
     )
 
