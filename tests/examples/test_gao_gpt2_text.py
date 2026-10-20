@@ -68,11 +68,18 @@ def test_tiny_nnx_sampler_repeatable_across_batch_sizes() -> None:
     )
     model = GPT2(config, nnx.Rngs(0))
     model.eval()  # pyright: ignore[reportUnknownMemberType]
+
     def sample(start_index: int, count: int) -> list[list[int]]:
         return generate_token_ids(
-            model, [1, 2, 3], start_index=start_index, count=count,
-            max_new_tokens=4, top_k=8, temperature=0.9,
-            seed=123, eos_token_id=31,
+            model,
+            [1, 2, 3],
+            start_index=start_index,
+            count=count,
+            max_new_tokens=4,
+            top_k=8,
+            temperature=0.9,
+            seed=123,
+            eos_token_id=31,
         )
 
     together = sample(0, 2)

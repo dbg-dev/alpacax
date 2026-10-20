@@ -177,6 +177,7 @@ def generate_token_ids(
     for position in range(len(prompt_ids), length):
         logits = next_token_logits(model, tokens, jnp.asarray(position - 1, dtype=jnp.int32))  # pyright: ignore[reportUnknownMemberType]
         best_logits, best_ids = jax.lax.top_k(logits, top_k)
+
         def split_key(key: Array) -> Array:
             return jax.random.split(key, 2)
 
