@@ -1,14 +1,14 @@
-from flax.nnx import Module, Optimizer, jit, value_and_grad
+from flax.nnx import Metric, Module, Optimizer, jit, value_and_grad
 from jax import Array
 
-from .contracts import EvalStep, LossWithAuxFn, Metric, TrainStep
+from .contracts import EvalStep, LossWithAuxFn, TrainStep
 
 
-def make_train_step(
+def make_train_step[ModelT: Module](
     loss_fn: LossWithAuxFn,
     *,
     donate: bool = False,
-) -> TrainStep:
+) -> TrainStep[ModelT, Optimizer[ModelT], Metric, Array, Array]:
     """Create a jitted NNX train step.
 
     The returned step mutates the NNX model/optimizer graph and updates the
@@ -18,13 +18,13 @@ def make_train_step(
 
     @jit(donate_argnums=(1,) if donate else ())
     def train_step(
-        model: Module,
-        optimizer: Optimizer[Module],
+        model: ModelT,
+        optimizer: Optimizer[ModelT],
         metrics: Metric,
         x: Array,
         y: Array,
     ) -> None:
-        def _loss_fn(model: Module) -> tuple[Array, Array]:
+        def _loss_fn(model: ModelT) -> tuple[Array, Array]:
             return loss_fn(model, x, y)
 
         (loss, logits), grads = value_and_grad(
@@ -43,12 +43,14 @@ def make_train_step(
     return train_step
 
 
-def make_eval_step(loss_fn: LossWithAuxFn) -> EvalStep:
+def make_eval_step[ModelT: Module](
+    loss_fn: LossWithAuxFn,
+) -> EvalStep[ModelT, Metric, Array, Array]:
     """Create a jitted NNX eval step."""
 
     @jit
     def eval_step(
-        model: Module,
+        model: ModelT,
         metrics: Metric,
         x: Array,
         y: Array,

@@ -17,12 +17,20 @@ class FakeOptimizer:
     pass
 
 
+class FakeModel:
+    def train(self) -> None:
+        pass
+
+    def eval(self) -> None:
+        pass
+
+
 def test_make_runner_normalises_hooks_to_tuple() -> None:
     def train_step(model, optimizer, metrics, x, y) -> None:
         pass
 
     train = TrainPhase(
-        model=object(),
+        model=FakeModel(),
         optimizer=FakeOptimizer(),
         loader=[],
         metrics=FakeMetric(),
