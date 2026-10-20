@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import override
 
 import jax.numpy as jnp
 import optax
+import pytest
 from flax import nnx
 from jax import Array
 from returns.result import Success
@@ -27,14 +29,15 @@ class WordTokenizer:
 
 class TinyLanguageModel(nnx.Module):
     def __init__(self, rngs: nnx.Rngs) -> None:
-        self.embedding = nnx.Embed(64, 8, rngs=rngs)
-        self.output = nnx.Linear(8, 64, rngs=rngs)
+        self.embedding: nnx.Embed = nnx.Embed(64, 8, rngs=rngs)
+        self.output: nnx.Linear = nnx.Linear(8, 64, rngs=rngs)
 
+    @override
     def __call__(self, token_ids: Array) -> Array:
         return self.output(self.embedding(token_ids))
 
 
-def test_pipeline_output_trains_real_nnx_model(monkeypatch) -> None:
+def test_pipeline_output_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch) -> None:
     rows = [{"instruction": f"Say hello {i}", "output": f"Hello number {i}!"} for i in range(4)]
 
     class Response:
