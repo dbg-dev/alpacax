@@ -59,6 +59,8 @@ For instructions on publishing to PyPI, see [publishing.md](docs/publishing.md).
 
 For Orbax checkpoint lifecycle and training resume, see [checkpointing.md](docs/checkpointing.md).
 
+For bridging the instruction pipeline to training batches, see [training-data.md](docs/training-data.md).
+
 * * *
 
 *This project was built from
