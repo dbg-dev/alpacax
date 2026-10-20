@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Collection, Hashable, Mapping, Sequence
 from typing import Any, Protocol, Self, cast
 
-from flax.nnx import GraphDef, Module, Param, merge, split, state, to_pure_dict
-from flax.traverse_util import flatten_dict, unflatten_dict
+from flax.nnx import GraphDef, Module, Param, merge, split, state, to_pure_dict  # pyright: ignore[reportUnknownVariableType]
+from flax.traverse_util import flatten_dict, unflatten_dict  # pyright: ignore[reportUnknownVariableType]
 from jax import Array
-from jax.numpy import array, swapaxes
+from jax.numpy import array, swapaxes  # pyright: ignore[reportUnknownVariableType]
 from returns.result import Result, Success
 
 from alpacax.params.mapping import (
@@ -58,10 +58,10 @@ def torch_to_jax(tensor: HFTensor) -> Array:
 
 
 def prepare_target(flax_model: Module) -> tuple[GraphDef[Any], ModelStateDict]:
-    graphdef, prestate = split(flax_model)
+    graphdef, prestate = split(flax_model)  # pyright: ignore[reportUnknownVariableType]
     # NNX state may contain non-array variables. Flax's flattening utilities
     # do not type their keys precisely, so constrain only the flattened keys.
-    return graphdef, cast(ModelStateDict, dict(flatten_dict(to_pure_dict(prestate))))
+    return graphdef, cast(ModelStateDict, dict(flatten_dict(to_pure_dict(prestate))))  # pyright: ignore[reportUnknownArgumentType]
 
 
 def rebuild_model(graphdef: GraphDef[Any], post: ModelStateDict) -> Module:
@@ -105,8 +105,8 @@ def model_mapper(
     # preserve the existing permissive adapter behavior.
     ignored_non_params: set[ModelParamKey] = set()
     if strict:
-        param_state = state(flax_model, Param)
-        param_keys = set(flatten_dict(to_pure_dict(param_state)))
+        param_state = state(flax_model, Param)  # pyright: ignore[reportUnknownVariableType]
+        param_keys = set(flatten_dict(to_pure_dict(param_state)))  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
         ignored_non_params = array_targets.keys() - param_keys
 
     result = map_param_dict(

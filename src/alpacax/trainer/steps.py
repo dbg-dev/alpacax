@@ -1,4 +1,4 @@
-from flax.nnx import Metric, Module, Optimizer, jit, value_and_grad
+from flax.nnx import Metric, Module, Optimizer, jit, value_and_grad  # pyright: ignore[reportUnknownVariableType]
 from jax import Array
 
 from .contracts import EvalStep, LossWithAuxFn, TrainStep
@@ -32,9 +32,9 @@ def make_train_step[ModelT: Module](
             has_aux=True,
         )(model)
 
-        optimizer.update(model, grads)
+        optimizer.update(model, grads)  # pyright: ignore[reportUnknownMemberType]
 
-        metrics.update(
+        metrics.update(  # pyright: ignore[reportUnknownMemberType]
             loss=loss,
             logits=logits,
             labels=y,
