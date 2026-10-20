@@ -12,6 +12,7 @@ from alpacax.pipelines.instruction.stages import (
     process_instruction,
     process_unpadded_instruction,
     shuffle_split,
+    shuffle_split_unpadded,
 )
 from alpacax.pipelines.instruction.validation import validate_raw_dataset
 from alpacax.types.errors import DatasetError, annotate_failure
@@ -121,5 +122,5 @@ def build_unpadded_dataset(
         _fetch,
         bind(validate_raw_dataset),
         bind(process_unpadded_instructions(tokenizer, cfg)),
-        map_(shuffle_split(cfg)),
+        map_(shuffle_split_unpadded(cfg)),
     )
