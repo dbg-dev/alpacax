@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import cast, override
+
 import jax.numpy as jnp
 import optax
 from flax import nnx
+from jax import Array
 
 from alpacax.trainer.contracts import HookContext, HookEntry
 from alpacax.trainer.core import run
@@ -15,10 +18,11 @@ from alpacax.trainer.losses import cross_entropy_loss
 
 class DropoutNet(nnx.Module):
     def __init__(self, rngs: nnx.Rngs) -> None:
-        self.linear = nnx.Linear(4, 4, rngs=rngs)
-        self.dropout = nnx.Dropout(0.5, rngs=rngs)
+        self.linear: nnx.Linear = nnx.Linear(4, 4, rngs=rngs)
+        self.dropout: nnx.Dropout = nnx.Dropout(0.5, rngs=rngs)
 
-    def __call__(self, x):
+    @override
+    def __call__(self, x: Array) -> Array:
         return self.dropout(self.linear(x))
 
 
@@ -27,6 +31,7 @@ class RecordingLogger:
         self.losses: list[float] = []
 
     def log(self, metrics: dict[str, float], step: int) -> None:
+        del step
         self.losses.append(metrics["loss"])
 
     def close(self) -> None:
@@ -37,9 +42,9 @@ def make_metrics() -> nnx.MultiMetric:
     return nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
 
 
-def make_batches(n: int = 3):
-    x = jnp.ones((8, 4))
-    y = jnp.zeros((8,), dtype=jnp.int32)
+def make_batches(n: int = 3) -> list[tuple[Array, Array]]:
+    x = cast(Array, jnp.ones((8, 4)))  # pyright: ignore[reportUnknownMemberType]
+    y = cast(Array, jnp.zeros((8,), dtype=jnp.int32))  # pyright: ignore[reportUnknownMemberType]
     return [(x, y)] * n
 
 
@@ -79,7 +84,7 @@ def test_eval_hook_loss_is_deterministic_and_restores_dropout() -> None:
 
 def test_run_enables_dropout_even_if_model_starts_in_eval_mode() -> None:
     model = DropoutNet(nnx.Rngs(0))
-    model.eval()
+    model.eval()  # pyright: ignore[reportUnknownMemberType]
     assert model.dropout.deterministic is True
 
     train, _ = make_phases(model)

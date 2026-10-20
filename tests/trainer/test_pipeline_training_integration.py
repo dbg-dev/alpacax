@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import override
+from typing import cast, override
 
 import jax.numpy as jnp
 import optax
@@ -82,7 +82,7 @@ def test_pipeline_output_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch) 
         loss_fn=partial(masked_cross_entropy_loss, ignore_index=config.ignore_index),
     )
     run(make_runner(train=train, max_steps=2))
-    assert int(optimizer.step.value) == 2
+    assert int(cast(nnx.Variable, optimizer.step).value) == 2
     # Eval and subsequent epochs can request a fresh iterator.
     assert len(list(loader)) == 2
 
@@ -149,4 +149,4 @@ def test_unpadded_pipeline_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch
         loss_fn=partial(masked_cross_entropy_loss, ignore_index=config.ignore_index),
     )
     run(make_runner(train=train, max_steps=2))
-    assert int(optimizer.step.value) == 2
+    assert int(cast(nnx.Variable, optimizer.step).value) == 2

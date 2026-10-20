@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import prod
+
 import numpy as np
 import pytest
 from returns.result import Failure, Success
@@ -102,8 +104,8 @@ def test_resolve_rules_reports_shape_mismatch():
 
 
 @pytest.mark.parametrize("shape", [(2, 2), (3, 2, 2)])
-def test_auto_square_matrix_returns_ambiguity_error(shape):
-    src = {"a": np.arange(np.prod(shape)).reshape(shape)}
+def test_auto_square_matrix_returns_ambiguity_error(shape: tuple[int, ...]) -> None:
+    src = {"a": np.arange(prod(shape)).reshape(shape)}
     dst = {"x": np.zeros(shape)}
 
     result = resolve_rules(src, dst, [MappingRule(dst="x", src="a")])
@@ -128,7 +130,7 @@ def test_auto_square_matrix_returns_ambiguity_error(shape):
         (TransformKind.TRANSPOSE_LAST_TWO, np.array([[1, 3], [2, 4]])),
     ],
 )
-def test_explicit_transform_maps_square_matrix(transform, expected):
+def test_explicit_transform_maps_square_matrix(transform: TransformKind, expected: np.ndarray) -> None:
     src = {"a": np.array([[1, 2], [3, 4]])}
     dst = {"x": np.zeros((2, 2))}
 
