@@ -56,10 +56,12 @@ def make_runner[TrainT: AnyTrainPhase](
     eval: AnyEvalPhase | None = None,
     hooks: Iterable[HookEntry] = (),
     max_steps: int | None = None,
+    start_step: int = 0,
 ) -> Runner[TrainT]:
     return Runner(
         train=train,
         eval=eval,
         hooks=tuple(hooks),
         max_steps=max_steps,
+        start_step=start_step,
     )
