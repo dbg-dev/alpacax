@@ -1,6 +1,6 @@
 from itertools import islice
 
-from .contracts import HookContext, Runner
+from .contracts import AnyTrainPhase, HookContext, Runner
 from .hooks import run_hooks
 
 
@@ -12,7 +12,7 @@ class EmptyDataloaderError(TrainerError):
     """Raised when a training dataloader yields no batches."""
 
 
-def run(runner: Runner) -> None:
+def run[TrainT: AnyTrainPhase](runner: Runner[TrainT]) -> None:
     """Run training.
 
     The train phase updates model/optimizer/metrics. Hooks own side effects such

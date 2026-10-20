@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -65,9 +66,9 @@ class FakeModel:
 def make_train_phase(
     *,
     metric: FakeMetric | None = None,
-    loader=None,
+    loader: Iterable[tuple[object, object]] | None = None,
     model: FakeModel | None = None,
-) -> TrainPhase:
+) -> TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object]:
     def step(
         model: object,
         optimizer: FakeOptimizer,
@@ -89,11 +90,11 @@ def make_train_phase(
 def make_eval_phase(
     *,
     metric: FakeMetric | None = None,
-    loader: object = None,
+    loader: Iterable[tuple[object, object]] | None = None,
     model: FakeModel | None = None,
-    step=None,
-) -> EvalPhase:
-    def default_step(model: object, metrics: FakeMetric, x, y) -> None:
+    step: Callable[[FakeModel, FakeMetric, object, object], None] | None = None,
+) -> EvalPhase[FakeModel, FakeMetric, object, object]:
+    def default_step(model: FakeModel, metrics: FakeMetric, x: object, y: object) -> None:
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return EvalPhase(

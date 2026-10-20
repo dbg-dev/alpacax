@@ -1,19 +1,17 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-from flax.nnx import Metric, Module, Optimizer
-from grain import DataLoader
+from flax.nnx import Module
 from jax import Array
 
 type CheckpointPayload = dict[str, Any]
 type LossWithAuxFn = Callable[[Module, Array, Array], tuple[Array, Array]]
-type TrainStep = Callable[
-    [Module, Optimizer[Module], Metric, Array, Array],
-    None,
+type TrainStep[ModelT, OptimizerT, MetricsT, X, Y] = Callable[
+    [ModelT, OptimizerT, MetricsT, X, Y], None
 ]
-type EvalStep = Callable[[Module, Metric, Array, Array], None]
+type EvalStep[ModelT, MetricsT, X, Y] = Callable[[ModelT, MetricsT, X, Y], None]
 
 
 @runtime_checkable
@@ -47,28 +45,54 @@ class MetricsLogger(Protocol):
     def close(self) -> None: ...
 
 
-@dataclass(slots=True)
-class TrainPhase:
-    model: Module
-    optimizer: Optimizer[Module]
-    loader: DataLoader
-    metrics: Metric
-    step: TrainStep
+class TrainEvalModel(Protocol):
+    """The only model lifecycle operations required by the runner and hooks."""
+
+    def train(self) -> None: ...
+    def eval(self) -> None: ...
+
+
+class MetricsLike(Protocol):
+    """Metric operations used by logging and evaluation hooks."""
+
+    def compute(self) -> Mapping[str, object]: ...
+    def reset(self) -> None: ...
 
 
 @dataclass(slots=True)
-class EvalPhase:
-    model: Module
-    loader: DataLoader
-    metrics: Metric
-    step: EvalStep
+class TrainPhase[
+    ModelT: TrainEvalModel,
+    OptimizerT,
+    MetricsT: MetricsLike,
+    X,
+    Y,
+]:
+    model: ModelT
+    optimizer: OptimizerT
+    loader: Iterable[tuple[X, Y]]
+    metrics: MetricsT
+    step: TrainStep[ModelT, OptimizerT, MetricsT, X, Y]
+
+
+@dataclass(slots=True)
+class EvalPhase[ModelT: TrainEvalModel, MetricsT: MetricsLike, X, Y]:
+    model: ModelT
+    loader: Iterable[tuple[X, Y]]
+    metrics: MetricsT
+    step: EvalStep[ModelT, MetricsT, X, Y]
+
+
+# Hooks operate on a shared, type-erased phase boundary. Individual phases
+# preserve their concrete model, optimiser, metric and batch types.
+type AnyTrainPhase = TrainPhase[Any, Any, Any, Any, Any]
+type AnyEvalPhase = EvalPhase[Any, Any, Any, Any]
 
 
 @dataclass(frozen=True, slots=True)
 class HookContext:
     step: int
-    train: TrainPhase
-    eval: EvalPhase | None = None
+    train: AnyTrainPhase
+    eval: AnyEvalPhase | None = None
 
 
 type Hook = Callable[[HookContext], None]
@@ -91,8 +115,8 @@ class HookEntry:
 
 
 @dataclass(slots=True)
-class Runner:
-    train: TrainPhase
-    eval: EvalPhase | None = None
+class Runner[TrainT: AnyTrainPhase]:
+    train: TrainT
+    eval: AnyEvalPhase | None = None
     hooks: tuple[HookEntry, ...] = ()
     max_steps: int | None = None

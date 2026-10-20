@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 import pytest
 
 from alpacax.trainer.contracts import HookEntry, Runner, TrainPhase
@@ -35,7 +37,9 @@ class FakeModel:
         self.mode = "eval"
 
 
-def make_train_phase(loader, model: FakeModel | None = None) -> TrainPhase:
+def make_train_phase(
+    loader: Iterable[tuple[object, object]], model: FakeModel | None = None
+) -> TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object]:
     metric = FakeMetric()
 
     def step(model, optimizer, metrics, x, y) -> None:
