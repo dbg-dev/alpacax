@@ -108,6 +108,11 @@ def checkpoint_hook(
     *,
     payload_fn: Callable[..., CheckpointPayload] | None = None,
 ) -> Hook:
+    """Build a save hook; register with ``lead_only=False`` for Orbax.
+
+    All participating processes must invoke distributed saves on the same steps.
+    Prefer ``checkpoint_entry`` for the correct scheduling configuration.
+    """
     # Orbax is loaded only if the default checkpoint payload builder is used.
     if payload_fn is None:
         from .checkpoints import checkpoint_payload
@@ -127,3 +132,19 @@ def checkpoint_hook(
         )
 
     return _hook
+
+
+def checkpoint_entry(
+    checkpointer: Checkpointer[CheckpointPayload],
+    *,
+    every: int = 100,
+    on_final: bool = True,
+    payload_fn: Callable[..., CheckpointPayload] | None = None,
+) -> HookEntry:
+    """Schedule checkpoint saves on all processes at matching completed steps."""
+    return HookEntry(
+        fn=checkpoint_hook(checkpointer, payload_fn=payload_fn),
+        every=every,
+        lead_only=False,
+        on_final=on_final,
+    )
