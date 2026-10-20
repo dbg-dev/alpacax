@@ -1,4 +1,5 @@
 """Fixed-shape bucketed batching for compact instruction samples."""
+
 from __future__ import annotations
 
 import jax.numpy as jnp
@@ -54,9 +55,7 @@ def test_bucketing_yields_every_record_once_and_is_reiterable() -> None:
 
 def test_drop_last_is_applied_per_bucket() -> None:
     records = [example(10, 2), example(11, 3), example(12, 5), example(13, 6)]
-    loader = BucketedBatchLoader(
-        records, batch_size=2, bucket_lengths=(4, 8), drop_last=True
-    )
+    loader = BucketedBatchLoader(records, batch_size=2, bucket_lengths=(4, 8), drop_last=True)
     assert len(loader) == 2
     assert [x.shape for x, _ in loader] == [(2, 4), (2, 8)]
 
@@ -99,6 +98,4 @@ def test_rejects_ragged_and_oversized_samples() -> None:
             bucket_lengths=(4,),
         )
     with pytest.raises(ValueError, match="exceeds largest bucket"):
-        BucketedBatchLoader(
-            [example(10, 5)], batch_size=2, bucket_lengths=(2, 4)
-        )
+        BucketedBatchLoader([example(10, 5)], batch_size=2, bucket_lengths=(2, 4))
