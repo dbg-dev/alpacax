@@ -48,7 +48,10 @@ class Settings:
     output_dir: Path = Path("runs/gao-proxy-sanity")
 
     def __post_init__(self) -> None:
-        if min(self.train_pairs, self.validation_pairs, self.prompts, self.batch_size, self.epochs) <= 0:
+        if (
+            min(self.train_pairs, self.validation_pairs, self.prompts, self.batch_size, self.epochs)
+            <= 0
+        ):
             raise ValueError("counts and epochs must be positive")
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be positive")
@@ -191,9 +194,7 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
 
     def make_model_and_optimizer() -> tuple[ProxyReward, nnx.Optimizer[ProxyReward]]:
         model = ProxyReward(nnx.Rngs(settings.seed))
-        optimizer = nnx.Optimizer(
-            model, optax.adam(settings.learning_rate), wrt=nnx.Param
-        )
+        optimizer = nnx.Optimizer(model, optax.adam(settings.learning_rate), wrt=nnx.Param)
         return model, optimizer
 
     model, optimizer = make_model_and_optimizer()
