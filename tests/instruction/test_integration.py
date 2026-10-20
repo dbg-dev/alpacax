@@ -1,8 +1,8 @@
 import json
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, override
 from pathlib import Path
 from threading import Thread
+from typing import Any, override
 
 from returns.result import Success
 

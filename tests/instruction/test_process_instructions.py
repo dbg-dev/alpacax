@@ -1,8 +1,10 @@
+# pyright: reportPrivateUsage=false, reportPrivateLocalImportUsage=false  # Internal-stage tests.
+
 from unittest.mock import Mock, patch
 
 from returns.result import Failure, Success
 
-from alpacax.pipelines.instruction.runner import _process_instructions  # pyright: ignore[reportPrivateUsage]
+from alpacax.pipelines.instruction.runner import _process_instructions
 from alpacax.types.errors import RowError
 
 
@@ -58,7 +60,7 @@ def test_process_instructions_returns_failure_when_no_valid_samples():
     ) as mocked:
         import alpacax.pipelines.instruction.runner as runner
 
-        assert runner.process_instruction is mocked  # pyright: ignore[reportPrivateLocalImportUsage]
+        assert runner.process_instruction is mocked
         result = _process_instructions(data, tokenizer, config)
 
     error = result.failure()

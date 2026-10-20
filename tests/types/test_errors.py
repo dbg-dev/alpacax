@@ -1,5 +1,5 @@
-from unittest.mock import patch
 from typing import Any, override
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel, ValidationError

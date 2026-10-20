@@ -1,13 +1,11 @@
 import pytest
-
-from alpacax.pipelines.instruction.config import PipelineConfig
-from alpacax.types.protocols import Tokenizer
-
 from returns.result import Failure, Success
 
 from alpacax.cli import load
 from alpacax.cli.load import CliArgs
+from alpacax.pipelines.instruction.config import PipelineConfig
 from alpacax.types.models import DatasetSplit
+from alpacax.types.protocols import Tokenizer
 
 
 def test_load_cli_prints_dataset_summary(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

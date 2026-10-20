@@ -1,4 +1,10 @@
-from flax.nnx import Metric, Module, Optimizer, jit, value_and_grad  # pyright: ignore[reportUnknownVariableType]
+from flax.nnx import (
+    Metric,
+    Module,
+    Optimizer,
+    jit,  # pyright: ignore[reportUnknownVariableType]
+    value_and_grad,
+)
 from jax import Array
 
 from .contracts import EvalStep, LossWithAuxFn, TrainStep

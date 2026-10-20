@@ -5,10 +5,24 @@ from __future__ import annotations
 from collections.abc import Collection, Hashable, Mapping, Sequence
 from typing import Any, Protocol, Self, cast
 
-from flax.nnx import GraphDef, Module, Param, merge, split, state, to_pure_dict  # pyright: ignore[reportUnknownVariableType]
-from flax.traverse_util import flatten_dict, unflatten_dict  # pyright: ignore[reportUnknownVariableType]
+from flax.nnx import (
+    GraphDef,
+    Module,
+    Param,
+    merge,
+    split,  # pyright: ignore[reportUnknownVariableType]
+    state,  # pyright: ignore[reportUnknownVariableType]
+    to_pure_dict,  # pyright: ignore[reportUnknownVariableType]
+)
+from flax.traverse_util import (
+    flatten_dict,  # pyright: ignore[reportUnknownVariableType]
+    unflatten_dict,  # pyright: ignore[reportUnknownVariableType]
+)
 from jax import Array
-from jax.numpy import array, swapaxes  # pyright: ignore[reportUnknownVariableType]
+from jax.numpy import (
+    array,  # pyright: ignore[reportUnknownVariableType]
+    swapaxes,
+)
 from returns.result import Result, Success
 
 from alpacax.params.mapping import (

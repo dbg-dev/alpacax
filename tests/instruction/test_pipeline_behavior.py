@@ -1,7 +1,9 @@
+# pyright: reportPrivateUsage=false  # These tests intentionally exercise internal pipeline stages.
+
 from returns.result import Success
 
 from alpacax.pipelines.instruction.config import PipelineConfig
-from alpacax.pipelines.instruction.runner import _process_instructions  # pyright: ignore[reportPrivateUsage]
+from alpacax.pipelines.instruction.runner import _process_instructions
 from alpacax.pipelines.instruction.stages import _shuffle_split  # pyright: ignore[reportPrivateUsage]
 from alpacax.types.errors import RowError
 from alpacax.types.models import SplitConfig
