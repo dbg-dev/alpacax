@@ -113,9 +113,7 @@ def test_unpadded_pipeline_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch
         eos_token_id=2,
         mask_prompt_labels=True,
     )
-    result = build_unpadded_dataset(
-        "https://example.test/alpaca.json", WordTokenizer(), config
-    )
+    result = build_unpadded_dataset("https://example.test/alpaca.json", WordTokenizer(), config)
     assert isinstance(result, Success)
     records = result.unwrap().train
     assert len(records) == 4
