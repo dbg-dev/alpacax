@@ -96,10 +96,10 @@ class TrainerCheckpointer:
             raise ValueError(f"Checkpoint path must end with numeric step: {path}") from exc
 
 
-def checkpoint_payload(
+def checkpoint_payload[ModelT: Module](
     *,
-    model: Module,
-    optimizer: Optimizer[Module],
+    model: ModelT,
+    optimizer: Optimizer[ModelT],
     metadata: dict[str, Any] | None = None,
 ) -> CheckpointPayload:
     return {
@@ -109,11 +109,11 @@ def checkpoint_payload(
     }
 
 
-def restore_training_state(
+def restore_training_state[ModelT: Module](
     checkpointer: Checkpointer[CheckpointPayload],
     *,
-    model: Module,
-    optimizer: Optimizer[Module],
+    model: ModelT,
+    optimizer: Optimizer[ModelT],
     path: Path | None = None,
 ) -> int:
     """Restore a compatible NNX model and optimizer in place.
@@ -129,7 +129,11 @@ def restore_training_state(
     )
     restored = checkpointer.restore(target, path)
     completed_step = restored["metadata"]["step"]
-    if not isinstance(completed_step, Integral) or isinstance(completed_step, bool) or completed_step < 0:
+    if (
+        not isinstance(completed_step, Integral)
+        or isinstance(completed_step, bool)
+        or completed_step < 0
+    ):
         raise ValueError("Checkpoint metadata must contain a non-negative integer 'step'")
 
     update(model, restored["model"])
