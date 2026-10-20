@@ -1,126 +1,120 @@
 # alpacax
 
+**Composable training infrastructure for JAX and Flax NNX experiments.**
 
-## Alpaca Dataset Pipeline
+alpacax provides a small set of building blocks for preparing instruction data,
+training and evaluating NNX models, importing pretrained weights, and checking
+that experimental results can be reproduced. It is intended for **small-scale
+ML research and prototyping**, not as a full-featured distributed training
+platform.
 
-Fetches, validates, formats, tokenizes, masks, pads, and splits an Alpaca-format
-instruction dataset using a railway-oriented Result pattern for error handling.
+The original Alpaca-format dataset pipeline remains part of the library; it is
+**not a prerequisite** for using the generic trainer.
 
-Python: 3.12+
-Core dependencies: pydantic, requests, returns, tyro
+## What it provides
 
-Design goals
+| Component | Responsibility |
+|---|---|
+| [Instruction pipeline](docs/training-data.md) | Fetch, validate, format, tokenize, mask, split and prepare Alpaca-format data; retain row-level errors |
+| [Training engine](docs/architecture.md) | JIT-compiled NNX train/eval steps driven by an iterable of `(inputs, labels)` batches and a caller-supplied loss |
+| [Hooks and checkpoints](docs/checkpointing.md) | Scheduled evaluation, metrics logging, Orbax model/optimizer saves, and state restoration |
+| [Model and parameter tools](docs/strict-mapping.md) | GPT-2 reference implementation and explicit Hugging Face/PyTorch-to-NNX parameter mapping |
+| [Research examples](docs/research-examples.md) | Reproducible proxy-reward experiments, GPT-2 candidate generation, and a marimo results notebook |
 
-- Keep I/O at the boundary and make transformations independently testable.
-- Validate remote data shape before running the pipeline.
-- Avoid unbounded padding by using a configurable maximum sequence length.
-- Support either truncating long samples or skipping them with recorded reasons.
-- Mask prompt labels by default for causal-LM instruction fine-tuning.
-- Return partial success with skipped row errors whenever possible.
+### Architecture at a glance
 
-
-## Optional dependencies
-
-Install only what you use; the core instruction pipeline does not require JAX,
-PyTorch or W&B:
-
-```sh
-pip install alpacax                   # dataset pipeline + CLI
-pip install 'alpacax[train]'          # JAX/Flax training + checkpoints
-pip install 'alpacax[huggingface]'    # HF/PyTorch -> Flax adapter
-pip install 'alpacax[train,wandb]'    # training + W&B logger
+```text
+  Instruction source                         Pretrained HF checkpoint
+          |                                            |
+    Validate / tokenize                          Mapping rules
+    / mask / split                                     |
+          |                                       NNX GPT-2
+     Batch loaders                                      |
+          |                                             |
+          +----> (inputs, labels) <---- other data/model experiments
+                         |
+                   NNX model + loss
+                   Optax optimizer
+                         |
+                 JIT train/eval phases
+                         |
+                       Runner
+                         |
+            Hooks: metrics | evaluation | Orbax
 ```
 
-With uv in a checkout:
+The **runner coordinates updates**; models, batches and losses remain independent
+of the instruction pipeline. Side effects live at hook and integration
+boundaries. See [Architecture and design](docs/architecture.md) for the
+contracts, modules and current limitations.
 
-```sh
-uv sync --no-dev                  # minimal installation
-uv sync --extra train            # training and dev tools
-uv sync --all-extras             # full development environment
-```
+## Quick start
 
-The PyTorch adapter operates on a supplied model's `state_dict()`; alpacax
-itself does not eagerly import `torch`. The W&B logger imports `wandb` only
-when constructed. The default checkpoint payload builder is loaded only when
-`checkpoint_hook()` is configured.
-
-After changing dependency declarations, regenerate and commit `uv.lock` with
-`uv lock` so CI and other developers use the updated resolution.
-
-* * *
-
-## Runnable research example: proxy reward overoptimization
-
-The [Gao-inspired proxy reward sanity check](docs/gao-proxy-study.md)
-trains an independent Bradley–Terry reward model with alpacax's JAX/Flax
-trainer, evaluates held-out preferences, verifies a real Orbax checkpoint
-restore, and runs a reproducible best-of-N sweep against a deterministic
-gold evaluator.
+Requires **Python 3.12+** and [uv](https://docs.astral.sh/uv/).
+From a repository checkout:
 
 ```sh
 uv sync --extra train
+
+# End-to-end training, evaluation and checkpoint-restore sanity check.
+# Use a fresh output directory for each run.
 uv run --extra train python -m alpacax.examples.gao_proxy_sanity \
     --seed 42 --output-dir runs/gao-sanity-42
 ```
 
-This **small synthetic integration experiment** requires no model downloads.
-It is intentionally *not* a reproduction of Gao et al.'s scaling-law results.
-The [interactive marimo notebook](notebooks/gao_best_of_n.py)
-plots the saved best-of-N curves and training-loss history:
+To inspect the generated `best_of_n.csv`, losses and run metadata:
 
 ```sh
 uv run --extra train --with marimo --with matplotlib \
     marimo edit notebooks/gao_best_of_n.py
 ```
 
-In the notebook enter `runs/gao-sanity-42` as the run directory.
-See the [research guide](docs/gao-proxy-study.md) and the
-[Gao et al. paper on arXiv](https://arxiv.org/abs/2210.10760)
-for experimental context and the path to cached GPT-2 completions.
+Set the notebook's run directory to `runs/gao-sanity-42`. This first example
+uses **synthetic data** and requires no pretrained weights. The
+[research examples guide](docs/research-examples.md) also shows the already
+validated end-to-end workflow using *real, frozen GPT-2 124M* completions.
+Those examples demonstrate integration; they **do not reproduce** Gao et al.'s
+reward-model scaling laws.
 
-## Frozen GPT-2 candidate cache (next research stage)
+### Optional dependencies
 
-To replace the toy candidates with **actual pretrained GPT-2 124M
-completions**, use the [GPT-2 candidate-cache and text-proxy guide](docs/gao-gpt2-candidates.md).
-The generator strictly loads Hugging Face weights into alpacax's NNX GPT-2,
-caches seeded continuations per prompt, then trains a **separate TF-IDF
-Bradley–Terry reward proxy** on prompt-disjoint training data.
+The minimal package intentionally avoids importing JAX, PyTorch or W&B.
 
-```sh
-uv run --extra train --extra huggingface --with 'transformers>=4.57,<5' \
-  python -m alpacax.examples.gao_gpt2_candidates \
-    --prompts-path docs/gao-prompts.example.jsonl \
-    --output-path runs/gao-gpt2/candidates.jsonl
+| Install | Enables |
+|---|---|
+| `pip install alpacax` | Instruction pipeline and CLI |
+| `pip install 'alpacax[train]'` | JAX/Flax NNX training, Optax and Orbax |
+| `pip install 'alpacax[huggingface]'` | PyTorch/Hugging Face model-state adapter |
+| `pip install 'alpacax[train,wandb]'` | Training and optional W&B logging |
 
-uv run --extra train python -m alpacax.examples.gao_text_best_of_n \
-    --cache-path runs/gao-gpt2/candidates.jsonl \
-    --output-dir runs/gao-text-42
-```
+For development, use `uv sync --all-extras`. The GPT-2 generation example
+additionally uses `transformers` via `uv run --with`, as documented in the
+[GPT-2 guide](docs/gao-gpt2-candidates.md).
 
-The first command downloads a pretrained model. This is a **methodology
-pilot**, not Gao et al.'s full experiment: the deterministic binary gold
-signal measures exact phrase matches, not human-rated response quality.
-See [the paper on arXiv](https://arxiv.org/abs/2210.10760).
+## Documentation
 
-* * *
+- [Architecture and design](docs/architecture.md) — layers, public contracts,
+  execution flow, integration boundaries, and limitations.
+- [Training data](docs/training-data.md) — instruction pipeline, masking,
+  padding and re-iterable batch loaders.
+- [Checkpointing](docs/checkpointing.md) — Orbax lifecycle, collective saves,
+  restore and resume limitations.
+- [Strict parameter mapping](docs/strict-mapping.md) — HF-to-NNX key/shape
+  validation and model reconstruction.
+- [Research examples](docs/research-examples.md) — synthetic Gao-inspired
+  experiment, frozen GPT-2 integration and marimo analysis.
+- [Installation](docs/installation.md), [development](docs/development.md)
+  and [publishing](docs/publishing.md).
 
-* * *
+## Scope
 
-## Project Docs
+alpacax currently focuses on **inspectable, reproducible single-device or
+small-scale experiments**. Its in-memory instruction loaders are not streaming,
+its current checkpoint payload does not resume dataloader/RNG positions, and
+multi-host operation has not been validated end to end. See the
+[architecture notes](docs/architecture.md) before using it at scale.
 
-For how to install uv and Python, see [installation.md](docs/installation.md).
+---
 
-For development workflows, see [development.md](docs/development.md).
-
-For instructions on publishing to PyPI, see [publishing.md](docs/publishing.md).
-
-For Orbax checkpoint lifecycle and training resume, see [checkpointing.md](docs/checkpointing.md).
-
-For bridging the instruction pipeline to training batches, see [training-data.md](docs/training-data.md).
-
-For opt-in strict weight mapping and coverage checks, see [strict-mapping.md](docs/strict-mapping.md).
-
-* * *
-
-*This project was built from
-[simple-modern-uv](https://github.com/jlevy/simple-modern-uv).*
+Project scaffolding originally based on
+[simple-modern-uv](https://github.com/jlevy/simple-modern-uv).
