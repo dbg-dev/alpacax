@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import jax.numpy as jnp
+from jax import Array
 
 from alpacax.trainer.losses import masked_cross_entropy_loss
 
 
 class ConstantLogitModel:
-    def __call__(self, x):
+    def __call__(self, x: Array) -> Array:
         batch, seq = x.shape
         logits = jnp.zeros((batch, seq, 3), dtype=jnp.float32)
         # Make class 1 obviously preferred.

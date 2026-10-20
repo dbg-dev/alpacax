@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import jax.numpy as jnp
 import optax
 from flax import nnx
 from jax import Array
 
+# Loss functions only require a forward pass that produces logits. Keep NNX
+# Module compatibility for the typed NNX training-step factory.
+type LogitsModel = nnx.Module | Callable[[Array], Array]
+
 
 def cross_entropy_loss(
-    model: nnx.Module,
+    model: LogitsModel,
     x: Array,
     y: Array,
 ) -> tuple[Array, Array]:
@@ -23,7 +29,7 @@ def cross_entropy_loss(
 
 
 def masked_cross_entropy_loss(
-    model: nnx.Module,
+    model: LogitsModel,
     x: Array,
     y: Array,
     *,
