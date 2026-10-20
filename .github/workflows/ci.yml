@@ -119,3 +119,82 @@ jobs:
         run: uv sync --no-dev
       - name: Run minimal-install smoke test
         run: uv run --no-sync python tests/smoke_minimal.py
+
+
+  # Temporary PR-scoped integration run against public pretrained GPT-2 124M.
+  # Remove after the run; avoid downloading 124M on every ordinary CI job.
+  gao-pretrained-124m:
+    if: github.event_name == 'pull_request' && github.head_ref == 'experiment/gao-gpt2-124m-live-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      JAX_PLATFORM_NAME: cpu
+      XLA_PYTHON_CLIENT_PREALLOCATE: "false"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.1"
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv python install "3.12"
+      - name: Install GPT-2 and JAX training dependencies
+        run: uv sync --all-extras
+      - name: Generate actual GPT-2 124M completions
+        timeout-minutes: 44
+        run: |
+          uv run --no-sync --with 'transformers>=4.57,<5' \
+            python -u -m alpacax.examples.gao_gpt2_candidates \
+              --prompts-path docs/gao-prompts.example.jsonl \
+              --output-path runs/gao-gpt2/candidates.jsonl \
+              --model-name openai-community/gpt2 \
+              --seed 42 --candidates-per-prompt 8 \
+              --max-new-tokens 20 --batch-size 4
+      - name: Check gold-label balance before proxy training
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          from collections import defaultdict
+          from alpacax.examples.gao_text_best_of_n import gold_binary
+          source = "runs/gao-gpt2/candidates.jsonl"
+          rows = [json.loads(s) for s in open(source, encoding="utf-8")]
+          balance = defaultdict(lambda: [0, 0])
+          for row in rows:
+              label = int(gold_binary(row["completion"], row["target"]))
+              balance[(row["split"], row["prompt_id"])][label] += 1
+          print("GOLD LABEL COUNTS (zero, one):", flush=True)
+          for key, counts in sorted(balance.items()):
+              print(key, counts, flush=True)
+          print("TOTAL COMPLETIONS:", len(rows), flush=True)
+          print("FIRST THREE COMPLETIONS:", flush=True)
+          for row in rows[:3]:
+              print({k: row[k] for k in ("prompt_id", "candidate_index", "completion")}, flush=True)
+          PY
+      - name: Train independent text proxy and evaluate best-of-N
+        run: |
+          uv run --no-sync python -u -m alpacax.examples.gao_text_best_of_n \
+            --cache-path runs/gao-gpt2/candidates.jsonl \
+            --output-dir runs/gao-gpt2-study \
+            --seed 42 --epochs 10
+      - name: Inspect actual gold and proxy curves
+        if: success()
+        run: |
+          echo "=== best_of_n.csv ==="
+          cat runs/gao-gpt2-study/best_of_n.csv
+          echo "=== summary.json ==="
+          cat runs/gao-gpt2-study/summary.json
+      - name: Keep cached completions and study artifacts for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gao-pretrained-gpt2-124m-seed42
+          path: |
+            runs/gao-gpt2/candidates.jsonl
+            runs/gao-gpt2-study/best_of_n.csv
+            runs/gao-gpt2-study/summary.json
+            runs/gao-gpt2-study/history.json
+          if-no-files-found: warn
+          retention-days: 7
