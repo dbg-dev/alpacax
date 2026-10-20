@@ -49,6 +49,28 @@ After changing dependency declarations, regenerate and commit `uv.lock` with
 
 * * *
 
+## Runnable research example: proxy reward overoptimization
+
+The [Gao-inspired proxy reward sanity check](docs/gao-proxy-study.md)
+trains an independent Bradley–Terry reward model with alpacax's JAX/Flax
+trainer, evaluates held-out preferences, verifies a real Orbax checkpoint
+restore, and runs a reproducible best-of-N sweep against a deterministic
+gold evaluator.
+
+```sh
+uv sync --extra train
+uv run --extra train python -m alpacax.examples.gao_proxy_sanity \
+    --seed 42 --output-dir runs/gao-sanity-42
+```
+
+This **small synthetic integration experiment** requires no model downloads.
+It is intentionally *not* a reproduction of Gao et al.'s scaling-law results.
+The [research guide](docs/gao-proxy-study.md) explains how to replace its
+synthetic candidates with cached frozen GPT-2 completions for the planned
+best-of-N study.
+
+* * *
+
 ## Project Docs
 
 For how to install uv and Python, see [installation.md](docs/installation.md).
