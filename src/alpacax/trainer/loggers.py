@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Protocol, cast
+from typing import Any
 
 
 class ConsoleLogger:
@@ -9,12 +9,6 @@ class ConsoleLogger:
 
     def close(self) -> None:
         pass
-
-
-class _WandbAPI(Protocol):
-    def init(self, *, project: str, config: dict[str, Any]) -> object: ...
-    def log(self, metrics: dict[str, float], *, step: int) -> None: ...
-    def finish(self) -> None: ...
 
 
 class WandbLogger:
@@ -27,7 +21,9 @@ class WandbLogger:
                 "`pip install 'alpacax[wandb]'` or `uv sync --extra wandb`."
             ) from exc
 
-        self._wandb: _WandbAPI = cast(_WandbAPI, cast(object, wandb))
+        # W&B is optional and dynamically imported; keep the dynamic module
+        # type isolated to this integration boundary.
+        self._wandb: Any = wandb
         self._wandb.init(project=project, config=dict(config or {}))
 
     def log(self, metrics: dict[str, float], step: int) -> None:
