@@ -61,6 +61,8 @@ For Orbax checkpoint lifecycle and training resume, see [checkpointing.md](docs/
 
 For bridging the instruction pipeline to training batches, see [training-data.md](docs/training-data.md).
 
+For opt-in strict weight mapping and coverage checks, see [strict-mapping.md](docs/strict-mapping.md).
+
 * * *
 
 *This project was built from
