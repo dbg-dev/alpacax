@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -66,20 +67,16 @@ def test_tiny_nnx_sampler_repeatable_across_batch_sizes() -> None:
         max_seq_len=16,
     )
     model = GPT2(config, nnx.Rngs(0))
-    model.eval()
-    args = dict(
-        prompt_ids=[1, 2, 3],
-        max_new_tokens=4,
-        top_k=8,
-        temperature=0.9,
-        seed=123,
-        eos_token_id=31,
-    )
-    together = generate_token_ids(model, start_index=0, count=2, **args)
-    separate = [
-        *generate_token_ids(model, start_index=0, count=1, **args),
-        *generate_token_ids(model, start_index=1, count=1, **args),
-    ]
+    model.eval()  # pyright: ignore[reportUnknownMemberType]
+    def sample(start_index: int, count: int) -> list[list[int]]:
+        return generate_token_ids(
+            model, [1, 2, 3], start_index=start_index, count=count,
+            max_new_tokens=4, top_k=8, temperature=0.9,
+            seed=123, eos_token_id=31,
+        )
+
+    together = sample(0, 2)
+    separate = [*sample(0, 1), *sample(1, 1)]
     assert together == separate
     assert all(len(row) <= 4 for row in together)
 
@@ -102,7 +99,7 @@ def test_tfidf_uses_train_only() -> None:
 
 def _cache(tmp_path: Path) -> Path:
     cache = tmp_path / "candidates.jsonl"
-    content = []
+    content: list[dict[str, object]] = []
     for split in ("train", "validation", "test"):
         for candidate_id, completion in enumerate(
             ["and the sailor left", "a sailor left", "the sailor arrived", "quietly"]
@@ -150,7 +147,7 @@ def test_text_study_end_to_end_with_real_nnx_train_and_restore(tmp_path: Path) -
 
 def test_missing_gold_preference_pairs_fail_loudly(tmp_path: Path) -> None:
     cache = _cache(tmp_path)
-    records = [json.loads(row) for row in cache.read_text().splitlines()]
+    records = [cast(dict[str, object], json.loads(row)) for row in cache.read_text().splitlines()]
     for row in records:
         if row["split"] == "validation":
             row["completion"] = "no target word"

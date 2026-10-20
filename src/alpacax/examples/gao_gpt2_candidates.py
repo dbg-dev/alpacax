@@ -89,7 +89,7 @@ def load_prompts(path: Path) -> list[Prompt]:
             prompts.append(prompt)
     if not prompts:
         raise ValueError("Prompt file is empty")
-    if {p.split for p in prompts} != SPLITS:
+    if frozenset(p.split for p in prompts) != SPLITS:
         raise ValueError("Provide separate train, validation and test prompt_ids")
     return prompts
 
@@ -136,7 +136,7 @@ def gpt2_from_huggingface(model_name: str) -> tuple[GPT2, Any]:
     return model, tokenizer
 
 
-@nnx.jit
+@nnx.jit  # pyright: ignore[reportUnknownMemberType]
 def next_token_logits(model: GPT2, padded_ids: Array, position: Array) -> Array:
     """Full-context forward, fixed compiled shape; reads only current last logits.
 
@@ -170,14 +170,17 @@ def generate_token_ids(
     length = len(prompt_ids) + max_new_tokens
     padded = np.full((count, length), eos_token_id, dtype=np.int32)
     padded[:, : len(prompt_ids)] = np.array(prompt_ids, dtype=np.int32)
-    tokens = jnp.asarray(padded)
+    tokens = jnp.asarray(padded)  # pyright: ignore[reportUnknownMemberType]
     master = jax.random.PRNGKey(seed)
     keys = jnp.stack([jax.random.fold_in(master, start_index + i) for i in range(count)])
 
     for position in range(len(prompt_ids), length):
-        logits = next_token_logits(model, tokens, jnp.asarray(position - 1, dtype=jnp.int32))
+        logits = next_token_logits(model, tokens, jnp.asarray(position - 1, dtype=jnp.int32))  # pyright: ignore[reportUnknownMemberType]
         best_logits, best_ids = jax.lax.top_k(logits, top_k)
-        split_keys = jax.vmap(lambda key: jax.random.split(key, 2))(keys)
+        def split_key(key: Array) -> Array:
+            return jax.random.split(key, 2)
+
+        split_keys = jax.vmap(split_key)(keys)
         keys, sample_keys = split_keys[:, 0], split_keys[:, 1]
         relative_ids = jax.vmap(jax.random.categorical)(sample_keys, best_logits / temperature)
         sampled_ids = jnp.take_along_axis(best_ids, relative_ids[:, None], axis=1)[:, 0]

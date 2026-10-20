@@ -126,9 +126,9 @@ def text_terms(text: str) -> list[str]:
 
 class TfidfFeatures:
     def __init__(self, max_features: int) -> None:
-        self.max_features = max_features
+        self.max_features: int = max_features
         self.vocabulary: dict[str, int] = {}
-        self.idf = np.empty((0,), dtype=np.float32)
+        self.idf: np.ndarray = np.empty((0,), dtype=np.float32)
 
     def fit(self, texts: list[str]) -> None:
         documents = [set(text_terms(text)) for text in texts]
@@ -218,7 +218,9 @@ def best_of_n_text(
         raise ValueError("Each test prompt must have the same >=2 candidate count")
     count = counts.pop()
     available = [n for n in BEST_OF_N if n <= count]
-    gold_rows, length_rows, proxy_rows = [], [], []
+    gold_rows: list[list[float]] = []
+    length_rows: list[list[int]] = []
+    proxy_rows: list[np.ndarray] = []
     for prompt_id, items in sorted(test_rows.items()):
         gold_rows.append([gold_binary(r.completion, r.target) for r in items])
         length_rows.append([len(r.token_ids) for r in items])
@@ -239,7 +241,7 @@ def best_of_n_text(
                 "proxy_mean": float(np.mean(proxy[indices, chosen])),
                 "gold_mean": float(np.mean(gold[indices, chosen])),
                 "random_gold_mean": float(np.mean(gold[:, :n])),
-                "oracle_gold_mean": float(np.mean(np.max(gold[:, :n], axis=1))),
+                "oracle_gold_mean": float(np.mean(np.max(gold[:, :n], axis=1))),  # pyright: ignore[reportUnknownArgumentType]
                 "length_only_gold_mean": float(np.mean(gold[indices, longest])),
                 "selected_length_mean": float(np.mean(length[indices, chosen])),
             }
@@ -337,7 +339,7 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
 
     valid_scores = np.asarray(model(jnp.asarray(valid_x)))  # pyright: ignore[reportUnknownMemberType]
     valid_predicted = valid_scores[:, 0] > valid_scores[:, 1]
-    accuracy = float(np.mean(valid_predicted == (valid_y > 0)))
+    accuracy = float(np.mean(valid_predicted == (valid_y > 0)))  # pyright: ignore[reportUnknownArgumentType]
     bon = best_of_n_text(grouped(rows, "test"), embeddings, model)
     summary: dict[str, object] = {
         "settings": {
