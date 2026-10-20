@@ -34,7 +34,7 @@ jobs:
       - name: Ruff lint
         run: uv run --no-sync ruff check src tests devtools
       - name: Ruff format (check only)
-        run: uv run --no-sync ruff format --check src tests devtools
+        run: uv run --no-sync ruff format --check --diff src tests devtools
       - name: BasedPyright
         run: uv run --no-sync basedpyright
 
