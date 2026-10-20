@@ -33,13 +33,13 @@ class TrainerCheckpointer:
 
     def save(
         self,
-        payload: CheckpointPayload,
+        state: CheckpointPayload,
         *,
         step: int,
     ) -> Path:
         self.manager.save(
             step,
-            args=args.StandardSave(payload),
+            args=args.StandardSave(state),
         )
         return self.root / str(step)
 
