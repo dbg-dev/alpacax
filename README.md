@@ -57,6 +57,8 @@ For development workflows, see [development.md](docs/development.md).
 
 For instructions on publishing to PyPI, see [publishing.md](docs/publishing.md).
 
+For Orbax checkpoint lifecycle and training resume, see [checkpointing.md](docs/checkpointing.md).
+
 * * *
 
 *This project was built from
