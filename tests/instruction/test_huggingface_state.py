@@ -25,6 +25,7 @@ class MixedStateModel(nnx.Module):
     def __init__(self) -> None:
         self.weight = nnx.Param(jnp.array([1.0, 2.0]))
         self.counter = nnx.Variable(7)
+        self.buffer = nnx.Variable(jnp.array([99.0]))
 
 
 def test_prepare_and_rebuild_preserves_non_array_state() -> None:
@@ -32,6 +33,7 @@ def test_prepare_and_rebuild_preserves_non_array_state() -> None:
 
     graphdef, flattened = prepare_target(model)
     assert flattened[("counter",)] == 7
+    assert jnp.array_equal(flattened[("buffer",)], jnp.array([99.0]))
     assert isinstance(flattened[("weight",)], type(jnp.array([1.0])))
 
     # A mapped parameter can change without losing unrelated scalar state.
@@ -39,6 +41,7 @@ def test_prepare_and_rebuild_preserves_non_array_state() -> None:
     restored = rebuild_model(graphdef, flattened)
     assert isinstance(restored, MixedStateModel)
     assert restored.counter.value == 7
+    assert jnp.array_equal(restored.buffer.value, jnp.array([99.0]))
     assert jnp.array_equal(restored.weight.value, jnp.array([3.0, 4.0]))
     assert jnp.array_equal(model.weight.value, jnp.array([1.0, 2.0]))
 
@@ -87,6 +90,7 @@ def test_hf_strict_coverage_skips_non_array_nnx_state() -> None:
     assert isinstance(mapped, MixedStateModel)
     assert jnp.array_equal(mapped.weight.value, jnp.array([3.0, 4.0]))
     assert mapped.counter.value == 7
+    assert jnp.array_equal(mapped.buffer.value, jnp.array([99.0]))
 
 
 def test_hf_strict_coverage_reports_unused_tied_weight_alias() -> None:
