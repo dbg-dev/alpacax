@@ -99,9 +99,7 @@ def test_hf_strict_coverage_reports_unused_tied_weight_alias() -> None:
     rule = MappingRule(dst=("weight",), src="weight", transform=IDENTITY)
     result = model_mapper(hf, MixedStateModel(), [rule], strict=True)
     assert isinstance(result, Failure)
-    assert result.failure() == [
-        MappingError(kind="unused_src", dst=None, src="lm_head.weight")
-    ]
+    assert result.failure() == [MappingError(kind="unused_src", dst=None, src="lm_head.weight")]
 
     mapped = model_mapper_or_raise(
         hf,
@@ -126,9 +124,7 @@ def test_hf_strict_coverage_reports_unmapped_array_target() -> None:
     result = model_mapper(hf, original, [rule], strict=True)
 
     assert isinstance(result, Failure)
-    assert result.failure() == [
-        MappingError(kind="unmapped_dst", dst=("random_init",))
-    ]
+    assert result.failure() == [MappingError(kind="unmapped_dst", dst=("random_init",))]
     assert jnp.array_equal(original.weight.value, jnp.array([1.0, 2.0]))
     with pytest.raises(ValueError, match="unmapped destination parameter"):
         model_mapper_or_raise(hf, original, [rule], strict=True)
