@@ -99,13 +99,13 @@ def _(load_error, mo, np, plt, records, show_controls, x_axis):
 
     _fig, _ax = plt.subplots(figsize=(9, 4.5))
     if "proxy_mean" in records[0]:
-        __ax.plot(_x, [r["proxy_mean"] for r in records], marker="o", label="Proxy-selected: proxy score")
-    __ax.plot(_x, [r["gold_mean"] for r in records], marker="o", label="Proxy-selected: GOLD score")
+        _ax.plot(_x, [r["proxy_mean"] for r in records], marker="o", label="Proxy-selected: proxy score")
+    _ax.plot(_x, [r["gold_mean"] for r in records], marker="o", label="Proxy-selected: GOLD score")
     if show_controls.value:
         if "random_gold_mean" in records[0]:
-            __ax.plot(_x, [r["random_gold_mean"] for r in records], linestyle="--", label="Random: gold")
+            _ax.plot(_x, [r["random_gold_mean"] for r in records], linestyle="--", label="Random: gold")
         if "oracle_gold_mean" in records[0]:
-            __ax.plot(_x, [r["oracle_gold_mean"] for r in records], linestyle="--", label="Gold oracle")
+            _ax.plot(_x, [r["oracle_gold_mean"] for r in records], linestyle="--", label="Gold oracle")
     _ax.set_xlabel("sqrt(KL), theoretical BoN" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
     _ax.set_ylabel("Mean reward (proxy and gold scales may differ)")
     _ax.set_title("Proxy optimization versus gold performance")
@@ -120,10 +120,10 @@ def _(load_error, mo, np, plt, records, show_controls, x_axis):
 @app.cell
 def _(load_error, mo, np, plt, records, x_axis):
     mo.stop(bool(load_error) or not records)
-    x = np.array([r.get(x_axis.value, r["n"]) for r in records])
+    _x = np.array([r.get(x_axis.value, r["n"]) for r in records])
     _fig2, _ax2 = plt.subplots(figsize=(9, 3))
     if "selected_length_mean" in records[0]:
-        _ax2.plot(x, [r["selected_length_mean"] for r in records],
+        _ax2.plot(_x, [r["selected_length_mean"] for r in records],
                  marker="o", label="Selected candidate length")
         _ax2.set_ylabel("Mean length")
     else:
@@ -131,7 +131,7 @@ def _(load_error, mo, np, plt, records, x_axis):
                  transform=_ax2.transAxes)
     if "length_only_gold_mean" in records[0] and "selected_length_mean" in records[0]:
         _twin = _ax2.twinx()
-        __twin.plot(_x, [r["length_only_gold_mean"] for r in records], linestyle=":",
+        _twin.plot(_x, [r["length_only_gold_mean"] for r in records], linestyle=":",
                   label="Longest-candidate gold score")
         _twin.set_ylabel("Gold score of longest candidate")
     _ax2.set_xlabel("sqrt(KL)" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
