@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast, override
+from typing import override
 
 import jax.numpy as jnp
 import optax
@@ -43,8 +43,8 @@ def make_metrics() -> nnx.MultiMetric:
 
 
 def make_batches(n: int = 3) -> list[tuple[Array, Array]]:
-    x = cast(Array, jnp.ones((8, 4)))  # pyright: ignore[reportUnknownMemberType]
-    y = cast(Array, jnp.zeros((8,), dtype=jnp.int32))  # pyright: ignore[reportUnknownMemberType]
+    x = jnp.ones((8, 4))  # pyright: ignore[reportUnknownMemberType]
+    y = jnp.zeros((8,), dtype=jnp.int32)  # pyright: ignore[reportUnknownMemberType]
     return [(x, y)] * n
 
 

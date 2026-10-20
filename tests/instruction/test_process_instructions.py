@@ -1,4 +1,5 @@
-# pyright: reportPrivateUsage=false, reportPrivateLocalImportUsage=false  # Internal-stage tests.
+# pyright: reportPrivateUsage=false, reportPrivateLocalImportUsage=false
+# These tests intentionally exercise internal pipeline stages.
 
 from unittest.mock import Mock, patch
 

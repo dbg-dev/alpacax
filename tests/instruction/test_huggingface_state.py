@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Self, cast
+from typing import Self
 
 import jax.numpy as jnp
 import numpy as np
@@ -24,14 +24,14 @@ from alpacax.params.mapping import IDENTITY, MappingError, MappingRule
 
 def _array(values: list[float]) -> Array:
     """Narrow incomplete JAX constructor typing at the test boundary."""
-    return cast(Array, jnp.array(values))  # pyright: ignore[reportUnknownMemberType]
+    return jnp.array(values)  # pyright: ignore[reportUnknownMemberType]
 
 
 class MixedStateModel(nnx.Module):
     def __init__(self) -> None:
-        self.weight: nnx.Param = nnx.Param(_array([1.0, 2.0]))
-        self.counter: nnx.Variable = nnx.Variable(7)
-        self.buffer: nnx.Variable = nnx.Variable(_array([99.0]))
+        self.weight: nnx.Param[Array] = nnx.Param(_array([1.0, 2.0]))
+        self.counter: nnx.Variable[int] = nnx.Variable(7)
+        self.buffer: nnx.Variable[Array] = nnx.Variable(_array([99.0]))
 
 
 def test_prepare_and_rebuild_preserves_non_array_state() -> None:
@@ -127,8 +127,8 @@ def test_hf_strict_coverage_reports_unused_tied_weight_alias() -> None:
 def test_hf_strict_coverage_reports_unmapped_array_target() -> None:
     class ExtraParameterModel(nnx.Module):
         def __init__(self) -> None:
-            self.weight = nnx.Param(_array([1.0, 2.0]))
-            self.random_init: nnx.Param = nnx.Param(_array([9.0]))
+            self.weight: nnx.Param[Array] = nnx.Param(_array([1.0, 2.0]))
+            self.random_init: nnx.Param[Array] = nnx.Param(_array([9.0]))
 
     hf = FakeHFModel({"weight": FakeTensor(np.array([3.0, 4.0]))})
     original = ExtraParameterModel()

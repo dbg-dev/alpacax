@@ -19,11 +19,11 @@ from alpacax.trainer.checkpoints import (
 
 
 def _ones(shape: tuple[int, ...]) -> Array:
-    return cast(Array, jnp.ones(shape))  # pyright: ignore[reportUnknownMemberType]
+    return jnp.ones(shape)  # pyright: ignore[reportUnknownMemberType]
 
 
 def _array(value: Array) -> Array:
-    return cast(Array, jnp.array(value))  # pyright: ignore[reportUnknownMemberType]
+    return jnp.array(value)  # pyright: ignore[reportUnknownMemberType]
 
 
 def make_model_and_optimizer() -> tuple[nnx.Linear, nnx.Optimizer[nnx.Linear]]:
@@ -37,7 +37,7 @@ def train_once(model: nnx.Linear, optimizer: nnx.Optimizer[nnx.Linear]) -> None:
         return jnp.sum(m(_ones((1, 2))))
 
     grads = nnx.grad(loss)(model)
-    optimizer.update(model, grads)
+    optimizer.update(model, grads)  # pyright: ignore[reportUnknownMemberType]
 
 
 def test_checkpoint_round_trip_restores_nnx_state_and_step(tmp_path: Path) -> None:
@@ -45,7 +45,7 @@ def test_checkpoint_round_trip_restores_nnx_state_and_step(tmp_path: Path) -> No
     train_once(model, optimizer)
 
     saved_kernel = _array(model.kernel[...])
-    saved_optimizer_step = int(cast(nnx.Variable, optimizer.step).value)
+    saved_optimizer_step = int(cast(nnx.Variable[Array], optimizer.step).value)
 
     with TrainerCheckpointer(tmp_path) as checkpointer:
         checkpointer.save(
@@ -71,7 +71,7 @@ def test_checkpoint_round_trip_restores_nnx_state_and_step(tmp_path: Path) -> No
 
     assert resumed_step == 7
     assert bool(jnp.array_equal(model.kernel[...], saved_kernel))
-    assert int(cast(nnx.Variable, optimizer.step).value) == saved_optimizer_step
+    assert int(cast(nnx.Variable[Array], optimizer.step).value) == saved_optimizer_step
 
 
 def test_checkpointer_closes_on_exception(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -92,7 +92,7 @@ def test_checkpointer_closes_on_exception(tmp_path: Path, monkeypatch: pytest.Mo
     assert called == [True]
 
 
-def test_restore_requires_a_checkpoint(tmp_path) -> None:
+def test_restore_requires_a_checkpoint(tmp_path: Path) -> None:
     model, optimizer = make_model_and_optimizer()
 
     with TrainerCheckpointer(tmp_path) as checkpointer:

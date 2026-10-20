@@ -1,4 +1,5 @@
-# pyright: reportPrivateUsage=false  # These tests intentionally exercise internal pipeline stages.
+# pyright: reportPrivateUsage=false
+# These tests intentionally exercise internal pipeline stages.
 
 from returns.result import Success
 
