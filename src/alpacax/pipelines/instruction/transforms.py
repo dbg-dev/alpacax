@@ -6,6 +6,7 @@ from alpacax.types.models import (
     DatasetSplit,
     Instruction,
     PaddedSample,
+    PreparedSample,
     SplitConfig,
     TokenizedSample,
 )
@@ -76,6 +77,45 @@ def split_samples[T, U](
     )
 
 
+def prepare_unpadded_sample(
+    sample: TokenizedSample,
+    *,
+    truncation: Literal["skip", "truncate"],
+    min_seq_len: int,
+    max_seq_len: int,
+    ignore_index: int,
+    mask_prompt_labels: bool,
+) -> PreparedSample:
+    """Create shifted input/target tokens without padding.
+
+    The label predicting the first response token remains trainable even when
+    preceding prompt positions are ignored. Sequence lengths stay bounded by
+    max_seq_len - 1 after shifting, matching the legacy padded preparation.
+    """
+    token_list = sample.token_list
+
+    if len(token_list) < min_seq_len:
+        raise ValueError(f"sample has {len(token_list)} tokens; minimum is {min_seq_len}")
+
+    if len(token_list) > max_seq_len:
+        if truncation == "skip":
+            raise ValueError(f"sample has {len(token_list)} tokens; maximum is {max_seq_len}")
+        token_list = token_list[:max_seq_len]
+
+        if len(token_list) <= len(sample.prompt_tokens):
+            raise ValueError("truncation removed all response tokens")
+
+    inputs, labels = make_input_label(token_list)
+
+    if mask_prompt_labels:
+        prompt_label_cutoff = max(len(sample.prompt_tokens) - 1, 0)
+        labels = [
+            ignore_index if idx < prompt_label_cutoff else label for idx, label in enumerate(labels)
+        ]
+
+    return PreparedSample(input_ids=inputs, labels=labels)
+
+
 def prepare_sample(
     sample: TokenizedSample,
     *,
@@ -86,40 +126,20 @@ def prepare_sample(
     ignore_index: int,
     mask_prompt_labels: bool,
 ) -> PaddedSample:
-    """Create a padded training sample with optional prompt-label masking."""
-    token_list = sample.token_list
-
-    if len(token_list) < min_seq_len:
-        raise ValueError(f"sample has {len(token_list)} tokens; minimum is {min_seq_len}")
-
-    if len(sample.token_list) > max_seq_len:
-        if truncation == "skip":
-            raise ValueError(
-                f"sample has {len(sample.token_list)} tokens; maximum is {max_seq_len}"
-            )
-        token_list = sample.token_list[:max_seq_len]
-
-        # If truncation removed the full response, skip rather than training on a
-        # prompt-only sequence.
-        if len(token_list) <= len(sample.prompt_tokens):
-            raise ValueError("truncation removed all response tokens")
-
-    inputs, labels = make_input_label(token_list)
-
-    if mask_prompt_labels:
-        # labels[i] predicts token_list[i + 1]. Keep the label at
-        # prompt_len - 1 because it predicts the first response token.
-        prompt_label_cutoff = max(len(sample.prompt_tokens) - 1, 0)
-        labels = [
-            ignore_index if idx < prompt_label_cutoff else label for idx, label in enumerate(labels)
-        ]
-
+    """Legacy fixed-length output, derived from the unpadded preparation."""
+    prepared = prepare_unpadded_sample(
+        sample,
+        truncation=truncation,
+        min_seq_len=min_seq_len,
+        max_seq_len=max_seq_len,
+        ignore_index=ignore_index,
+        mask_prompt_labels=mask_prompt_labels,
+    )
     target_len = max_seq_len - 1
-    attention_mask = [1] * len(inputs)
-
+    attention_mask = [1] * len(prepared.input_ids)
     return PaddedSample(
-        input_ids=pad_to(inputs, target_len, pad_token),
-        labels=pad_to(labels, target_len, ignore_index),
+        input_ids=pad_to(prepared.input_ids, target_len, pad_token),
+        labels=pad_to(prepared.labels, target_len, ignore_index),
         attention_mask=pad_to(attention_mask, target_len, 0),
     )
 

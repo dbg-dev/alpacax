@@ -26,6 +26,13 @@ class TokenizedSample(BaseModel):
         return self.prompt_tokens + self.response_tokens
 
 
+class PreparedSample(BaseModel):
+    """Shifted, optionally prompt-masked token sequences without right padding."""
+
+    input_ids: list[int]
+    labels: list[int]
+
+
 class PaddedSample(BaseModel):
     input_ids: list[int]
     labels: list[int]

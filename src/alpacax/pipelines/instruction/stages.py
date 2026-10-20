@@ -9,13 +9,14 @@ from alpacax.pipelines.instruction.config import PipelineConfig
 from alpacax.pipelines.instruction.transforms import (
     format_alpaca,
     prepare_sample,
+    prepare_unpadded_sample,
     shuffle,
     split_samples,
     tokenize_sample,
 )
 from alpacax.pipelines.instruction.validation import parse_instruction
 from alpacax.types.errors import DatasetError, to_dataset_error
-from alpacax.types.models import DatasetSplit, PaddedSample, SplitConfig
+from alpacax.types.models import DatasetSplit, PaddedSample, PreparedSample, SplitConfig
 from alpacax.types.protocols import Tokenizer
 
 # ── Generator pipeline ────────────────────────────────────────────────────────
@@ -51,11 +52,24 @@ def prepare(
     )
 
 
-def _shuffle_split(
-    processed: tuple[list[PaddedSample], list[DatasetError]],
+def prepare_unpadded(config: PipelineConfig):
+    return safe(
+        partial(
+            prepare_unpadded_sample,
+            truncation=config.truncation,
+            min_seq_len=config.min_seq_len,
+            max_seq_len=config.max_seq_len,
+            ignore_index=config.ignore_index,
+            mask_prompt_labels=config.mask_prompt_labels,
+        )
+    )
+
+
+def _shuffle_split[T](
+    processed: tuple[list[T], list[DatasetError]],
     seed: int,
     weights: SplitConfig,
-) -> DatasetSplit[PaddedSample, DatasetError]:
+) -> DatasetSplit[T, DatasetError]:
     samples, errors = processed
     shuffled = shuffle(samples, seed)
     split = split_samples(shuffled, errors, weights)
@@ -71,6 +85,15 @@ def shuffle_split(
     return partial(_shuffle_split, seed=config.seed, weights=config.weights)
 
 
+def shuffle_split_unpadded(
+    config: PipelineConfig,
+) -> Callable[
+    [tuple[list[PreparedSample], list[DatasetError]]],
+    DatasetSplit[PreparedSample, DatasetError],
+]:
+    return partial(_shuffle_split, seed=config.seed, weights=config.weights)
+
+
 def process_instruction(
     datum: dict[str, str],
     tokenizer: Tokenizer,
@@ -82,6 +105,20 @@ def process_instruction(
         map_(format_alpaca),  # pyright: ignore[reportUnknownArgumentType]
         bind(tokenize(tokenizer, config)),
         bind(prepare(config)),
+    )
+
+
+def process_unpadded_instruction(
+    datum: dict[str, str],
+    tokenizer: Tokenizer,
+    config: PipelineConfig,
+) -> ResultE[PreparedSample]:
+    return flow(
+        datum,
+        parse_instruction,
+        map_(format_alpaca),  # pyright: ignore[reportUnknownArgumentType]
+        bind(tokenize(tokenizer, config)),
+        bind(prepare_unpadded(config)),
     )
 
 
