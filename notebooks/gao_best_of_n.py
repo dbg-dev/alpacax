@@ -95,73 +95,72 @@ def _(Path, csv, json, mo, path_input):
 @app.cell
 def _(load_error, mo, np, plt, records, show_controls, x_axis):
     mo.stop(bool(load_error) or not records)
-    x = np.array([r.get(x_axis.value, r["n"]) for r in records])
-    n = np.array([r["n"] for r in records], dtype=int)
+    _x = np.array([r.get(x_axis.value, r["n"]) for r in records])
 
-    fig, ax = plt.subplots(figsize=(9, 4.5))
+    _fig, _ax = plt.subplots(figsize=(9, 4.5))
     if "proxy_mean" in records[0]:
-        ax.plot(x, [r["proxy_mean"] for r in records], marker="o", label="Proxy-selected: proxy score")
-    ax.plot(x, [r["gold_mean"] for r in records], marker="o", label="Proxy-selected: GOLD score")
+        __ax.plot(_x, [r["proxy_mean"] for r in records], marker="o", label="Proxy-selected: proxy score")
+    __ax.plot(_x, [r["gold_mean"] for r in records], marker="o", label="Proxy-selected: GOLD score")
     if show_controls.value:
         if "random_gold_mean" in records[0]:
-            ax.plot(x, [r["random_gold_mean"] for r in records], linestyle="--", label="Random: gold")
+            __ax.plot(_x, [r["random_gold_mean"] for r in records], linestyle="--", label="Random: gold")
         if "oracle_gold_mean" in records[0]:
-            ax.plot(x, [r["oracle_gold_mean"] for r in records], linestyle="--", label="Gold oracle")
-    ax.set_xlabel("sqrt(KL), theoretical BoN" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
-    ax.set_ylabel("Mean reward (proxy and gold scales may differ)")
-    ax.set_title("Proxy optimization versus gold performance")
-    ax.grid(alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-    mo.as_html(fig)
-    plt.close(fig)
-    return n
+            __ax.plot(_x, [r["oracle_gold_mean"] for r in records], linestyle="--", label="Gold oracle")
+    _ax.set_xlabel("sqrt(KL), theoretical BoN" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
+    _ax.set_ylabel("Mean reward (proxy and gold scales may differ)")
+    _ax.set_title("Proxy optimization versus gold performance")
+    _ax.grid(alpha=0.3)
+    _ax.legend()
+    _fig.tight_layout()
+    plt.close(_fig)
+    mo.as_html(_fig)
+    return
 
 
 @app.cell
 def _(load_error, mo, np, plt, records, x_axis):
     mo.stop(bool(load_error) or not records)
     x = np.array([r.get(x_axis.value, r["n"]) for r in records])
-    fig2, ax2 = plt.subplots(figsize=(9, 3))
+    _fig2, _ax2 = plt.subplots(figsize=(9, 3))
     if "selected_length_mean" in records[0]:
-        ax2.plot(x, [r["selected_length_mean"] for r in records],
+        _ax2.plot(x, [r["selected_length_mean"] for r in records],
                  marker="o", label="Selected candidate length")
-        ax2.set_ylabel("Mean length")
+        _ax2.set_ylabel("Mean length")
     else:
-        ax2.text(0.5, 0.5, "No length data in this run", ha="center", va="center",
-                 transform=ax2.transAxes)
+        _ax2.text(0.5, 0.5, "No length data in this run", ha="center", va="center",
+                 transform=_ax2.transAxes)
     if "length_only_gold_mean" in records[0] and "selected_length_mean" in records[0]:
-        twin = ax2.twinx()
-        twin.plot(x, [r["length_only_gold_mean"] for r in records], linestyle=":",
+        _twin = _ax2.twinx()
+        __twin.plot(_x, [r["length_only_gold_mean"] for r in records], linestyle=":",
                   label="Longest-candidate gold score")
-        twin.set_ylabel("Gold score of longest candidate")
-    ax2.set_xlabel("sqrt(KL)" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
-    ax2.set_title("Length exploitation diagnostic")
-    ax2.grid(alpha=0.25)
-    fig2.tight_layout()
-    mo.as_html(fig2)
-    plt.close(fig2)
+        _twin.set_ylabel("Gold score of longest candidate")
+    _ax2.set_xlabel("sqrt(KL)" if x_axis.value == "sqrt_kl" else "Best-of-N candidates")
+    _ax2.set_title("Length exploitation diagnostic")
+    _ax2.grid(alpha=0.25)
+    _fig2.tight_layout()
+    plt.close(_fig2)
+    mo.as_html(_fig2)
     return
 
 
 @app.cell
 def _(history, mo, plt):
     mo.stop(not history, mo.md("Training-loss history is not available for this run."))
-    fig3, ax3 = plt.subplots(figsize=(9, 3.3))
+    _fig3, _ax3 = plt.subplots(figsize=(9, 3.3))
     for split in ("train", "validation"):
         subset = [row for row in history if row.get("split") == split]
         if subset:
-            ax3.plot([int(row["step"]) for row in subset],
+            _ax3.plot([int(row["step"]) for row in subset],
                      [float(row["loss"]) for row in subset],
                      marker=".", label=split)
-    ax3.set_xlabel("Completed optimizer updates")
-    ax3.set_ylabel("Bradley–Terry loss")
-    ax3.set_title("Training and held-out preference loss")
-    ax3.legend()
-    ax3.grid(alpha=0.25)
-    fig3.tight_layout()
-    mo.as_html(fig3)
-    plt.close(fig3)
+    _ax3.set_xlabel("Completed optimizer updates")
+    _ax3.set_ylabel("Bradley–Terry loss")
+    _ax3.set_title("Training and held-out preference loss")
+    _ax3.legend()
+    _ax3.grid(alpha=0.25)
+    _fig3.tight_layout()
+    plt.close(_fig3)
+    mo.as_html(_fig3)
     return
 
 
@@ -174,7 +173,7 @@ def _(load_error, mo, records, summary):
     changed = last["gold_mean"] - best_gold["gold_mean"]
     acc = summary.get("held_out_preference_accuracy")
     acc_line = f"**Held-out preference accuracy:** {acc:.1%}" if isinstance(acc, (int, float)) else ""
-    mo.md(
+    _interpretation = mo.md(
         f"""
         ### What do these curves say?
 
@@ -189,15 +188,14 @@ def _(load_error, mo, records, summary):
         controls before interpreting the effect.
         """
     )
-    mo.ui.table(records, selection=None, page_size=10)
+    mo.vstack([_interpretation, mo.ui.table(records, selection=None, page_size=10)])
     return
 
 
 @app.cell
 def _(mo, summary):
     if summary:
-        mo.md("### Run metadata and caveats")
-        mo.json(summary)
+        mo.vstack([mo.md("### Run metadata and caveats"), mo.json(summary)])
     return
 
 
