@@ -8,8 +8,8 @@ from typing import Self
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from returns.result import Failure, Success
 from flax import nnx
+from returns.result import Failure, Success
 
 from alpacax.integrations.huggingface import (
     HFTensor,
