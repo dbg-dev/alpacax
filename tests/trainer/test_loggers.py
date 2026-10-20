@@ -26,6 +26,7 @@ def test_wandb_logger_reports_missing_extra(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_wandb_logger_imports_on_construction(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, object]] = []
+
     def fake_init(**kw: object) -> None:
         calls.append(("init", kw))
 

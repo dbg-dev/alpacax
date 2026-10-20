@@ -130,7 +130,9 @@ def test_auto_square_matrix_returns_ambiguity_error(shape: tuple[int, ...]) -> N
         (TransformKind.TRANSPOSE_LAST_TWO, np.array([[1, 3], [2, 4]])),
     ],
 )
-def test_explicit_transform_maps_square_matrix(transform: TransformKind, expected: np.ndarray) -> None:
+def test_explicit_transform_maps_square_matrix(
+    transform: TransformKind, expected: np.ndarray
+) -> None:
     src = {"a": np.array([[1, 2], [3, 4]])}
     dst = {"x": np.zeros((2, 2))}
 

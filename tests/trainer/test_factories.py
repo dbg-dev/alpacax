@@ -26,7 +26,9 @@ class FakeModel:
 
 
 def test_make_runner_normalises_hooks_to_tuple() -> None:
-    def train_step(model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object) -> None:
+    def train_step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
         del model, optimizer, metrics, x, y
 
     train = TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object](

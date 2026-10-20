@@ -8,7 +8,9 @@ from alpacax.types.models import DatasetSplit
 from alpacax.types.protocols import Tokenizer
 
 
-def test_load_cli_prints_dataset_summary(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_load_cli_prints_dataset_summary(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     def fake_build_dataset(url: str, tokenizer: Tokenizer, config: PipelineConfig):
         del url, tokenizer, config
         return Success(
@@ -33,7 +35,9 @@ def test_load_cli_prints_dataset_summary(monkeypatch: pytest.MonkeyPatch, capsys
     assert "skipped=1" in captured.out
 
 
-def test_load_cli_returns_failure_when_pipeline_fails(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_load_cli_returns_failure_when_pipeline_fails(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     def fake_build_dataset(url: str, tokenizer: Tokenizer, config: PipelineConfig):
         del url, tokenizer, config
         return Failure(ValueError("boom"))

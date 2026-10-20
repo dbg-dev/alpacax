@@ -43,7 +43,9 @@ def make_train_phase(
 ) -> TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object]:
     metric = FakeMetric()
 
-    def step(model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object) -> None:
+    def step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
         del model, optimizer
         metrics.update(loss=1.0, logits=x, labels=y)
 
@@ -103,7 +105,9 @@ def test_run_puts_train_model_in_train_mode_for_every_step() -> None:
     train = make_train_phase(loader=[("x0", "y0"), ("x1", "y1")], model=model)
     inner_step = train.step
 
-    def recording_step(model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object) -> None:
+    def recording_step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
         modes_seen.append(model.mode)
         inner_step(model, optimizer, metrics, x, y)
 

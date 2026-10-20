@@ -298,7 +298,9 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
         "metadata": {"step": 42},
     }
 
-    def fake_payload_fn(model: FakeModel, optimizer: FakeOptimizer, metadata: dict[str, object]) -> CheckpointPayload:
+    def fake_payload_fn(
+        model: FakeModel, optimizer: FakeOptimizer, metadata: dict[str, object]
+    ) -> CheckpointPayload:
         assert model is train.model
         assert optimizer is train.optimizer
         assert metadata == {"step": 42}
@@ -319,7 +321,10 @@ def test_checkpoint_entry_runs_on_non_lead_process(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("alpacax.trainer.hooks.is_lead_process", lambda: False)
     checkpointer = Mock()
     payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {"step": 2}}
-    def payload_fn(*, model: object, optimizer: object, metadata: dict[str, object]) -> CheckpointPayload:
+
+    def payload_fn(
+        *, model: object, optimizer: object, metadata: dict[str, object]
+    ) -> CheckpointPayload:
         del model, optimizer, metadata
         return payload
 
@@ -334,7 +339,10 @@ def test_checkpoint_entry_runs_on_non_lead_process(monkeypatch: pytest.MonkeyPat
 def test_checkpoint_entry_respects_interval_and_final_flush() -> None:
     checkpointer = Mock()
     payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {}}
-    def payload_fn(*, model: object, optimizer: object, metadata: dict[str, object]) -> CheckpointPayload:
+
+    def payload_fn(
+        *, model: object, optimizer: object, metadata: dict[str, object]
+    ) -> CheckpointPayload:
         del model, optimizer, metadata
         return payload
 
