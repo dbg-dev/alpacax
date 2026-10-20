@@ -103,9 +103,14 @@ def test_unpadded_pipeline_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch
         def json(self) -> list[dict[str, str]]:
             return rows
 
+    def fake_get(url: str, timeout: float) -> Response:
+        assert url == "https://example.test/alpaca.json"
+        assert timeout > 0
+        return Response()
+
     monkeypatch.setattr(
         "alpacax.pipelines.instruction.pipeio.requests.get",
-        lambda url, timeout: Response(),
+        fake_get,
     )
     config = PipelineConfig(
         max_seq_len=64,
