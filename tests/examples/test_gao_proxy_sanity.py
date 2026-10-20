@@ -42,9 +42,7 @@ def test_best_of_n_controls_share_candidate_pool() -> None:
     rows = best_of_n_rows(pool, proxy)
     assert [row["n"] for row in rows] == list(BEST_OF_N)
     assert rows[0]["sqrt_kl"] == 0.0
-    assert all(
-        row["oracle_gold_mean"] >= row["gold_mean"] - 1e-5 for row in rows
-    )
+    assert all(row["oracle_gold_mean"] >= row["gold_mean"] - 1e-5 for row in rows)
     assert rows[-1]["proxy_mean"] > rows[0]["proxy_mean"]
 
 
