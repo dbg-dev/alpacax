@@ -5,7 +5,15 @@ from collections.abc import Iterable
 from flax.nnx import Metric, Module, Optimizer
 from jax import Array
 
-from .contracts import AnyEvalPhase, AnyTrainPhase, EvalPhase, HookEntry, LossWithAuxFn, Runner, TrainPhase
+from .contracts import (
+    AnyEvalPhase,
+    AnyTrainPhase,
+    EvalPhase,
+    HookEntry,
+    LossWithAuxFn,
+    Runner,
+    TrainPhase,
+)
 from .steps import make_eval_step, make_train_step
 
 
