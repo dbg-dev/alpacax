@@ -78,6 +78,32 @@ See the [research guide](docs/gao-proxy-study.md) and the
 [Gao et al. paper on arXiv](https://arxiv.org/abs/2210.10760)
 for experimental context and the path to cached GPT-2 completions.
 
+## Frozen GPT-2 candidate cache (next research stage)
+
+To replace the toy candidates with **actual pretrained GPT-2 124M
+completions**, use the [GPT-2 candidate-cache and text-proxy guide](docs/gao-gpt2-candidates.md).
+The generator strictly loads Hugging Face weights into alpacax's NNX GPT-2,
+caches seeded continuations per prompt, then trains a **separate TF-IDF
+Bradley–Terry reward proxy** on prompt-disjoint training data.
+
+```sh
+uv run --extra train --extra huggingface --with 'transformers>=4.57,<5' \
+  python -m alpacax.examples.gao_gpt2_candidates \
+    --prompts-path docs/gao-prompts.example.jsonl \
+    --output-path runs/gao-gpt2/candidates.jsonl
+
+uv run --extra train python -m alpacax.examples.gao_text_best_of_n \
+    --cache-path runs/gao-gpt2/candidates.jsonl \
+    --output-dir runs/gao-text-42
+```
+
+The first command downloads a pretrained model. This is a **methodology
+pilot**, not Gao et al.'s full experiment: the deterministic binary gold
+signal measures exact phrase matches, not human-rated response quality.
+See [the paper on arXiv](https://arxiv.org/abs/2210.10760).
+
+* * *
+
 * * *
 
 ## Project Docs

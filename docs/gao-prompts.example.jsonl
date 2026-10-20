@@ -1,0 +1,8 @@
+{"prompt_id":"train-science","split":"train","prompt":"The scientist wrote in her notebook: ","target":"the"}
+{"prompt_id":"train-harbor","split":"train","prompt":"An old harbor on a rainy morning looked like ","target":"and"}
+{"prompt_id":"train-museum","split":"train","prompt":"The museum guide described the discovery: ","target":"the"}
+{"prompt_id":"train-garden","split":"train","prompt":"A quiet garden at the edge of town was ","target":"and"}
+{"prompt_id":"validation-library","split":"validation","prompt":"In the library, the visitor noticed ","target":"the"}
+{"prompt_id":"validation-forest","split":"validation","prompt":"A hiker entered the deep forest and found ","target":"and"}
+{"prompt_id":"test-station","split":"test","prompt":"At the railway station, an unexpected visitor said ","target":"the"}
+{"prompt_id":"test-lighthouse","split":"test","prompt":"A lighthouse keeper wrote a message about the sea: ","target":"and"}
