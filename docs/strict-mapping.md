@@ -36,9 +36,10 @@ Coverage checks use **declared rule keys**, not distinct underlying tensor
 values. One source may legitimately map to several destinations. A declared
 but invalid rule still fails its existing resolution/shape validation.
 
-For the NNX adapter, only **JAX-array-valued state leaves** count as
-destination targets. Unrelated NNX state such as counters is preserved and
-does not need a mapping rule.
+For the NNX adapter, only **JAX-array-valued `nnx.Param` leaves** count as
+required destination targets. The adapter also carries array-valued NNX
+`RngState` (random keys/counters) and other variables, but does not require
+Hugging Face mapping rules for them. Non-parameter state is preserved.
 
 ### Intentional exceptions
 
