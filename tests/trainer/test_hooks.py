@@ -271,9 +271,7 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
             self.calls.append((state, step))
             return Path(f"/fake/checkpoints/{step}")
 
-        def restore(
-            self, target: CheckpointPayload, path: Path | None = None
-        ) -> CheckpointPayload:
+        def restore(self, target: CheckpointPayload, path: Path | None = None) -> CheckpointPayload:
             raise FileNotFoundError("No checkpoint available")
 
         def latest(self) -> Path | None:
