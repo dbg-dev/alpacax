@@ -99,9 +99,7 @@ def prepare_unpadded_sample(
 
     if len(token_list) > max_seq_len:
         if truncation == "skip":
-            raise ValueError(
-                f"sample has {len(token_list)} tokens; maximum is {max_seq_len}"
-            )
+            raise ValueError(f"sample has {len(token_list)} tokens; maximum is {max_seq_len}")
         token_list = token_list[:max_seq_len]
 
         if len(token_list) <= len(sample.prompt_tokens):
@@ -144,6 +142,7 @@ def prepare_sample(
         labels=pad_to(prepared.labels, target_len, ignore_index),
         attention_mask=pad_to(attention_mask, target_len, 0),
     )
+
 
 def tokenize_sample(
     sample: AlpacaSample,
