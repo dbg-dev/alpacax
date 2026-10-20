@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Collection, Hashable, Mapping, Sequence
 from typing import Any, Protocol, Self, cast
 
 from flax.nnx import GraphDef, Module, merge, split, to_pure_dict
@@ -73,11 +73,21 @@ def model_mapper(
     src_model: HFModelLike,
     flax_model: Module,
     rules: Sequence[MappingRule[ModelParamKey, HFParamKey]],
+    *,
+    strict: bool = False,
+    allow_unmapped_dst: Collection[ModelParamKey] = (),
+    allow_unused_src: Collection[HFParamKey] = (),
 ) -> Result[Module, list[MappingError[ModelParamKey, HFParamKey]]]:
     """Map HF/PyTorch parameters into a Flax NNX model.
 
-    The mapping itself is handled by the generic dict-to-dict engine. This
-    function only adapts the model-native structures to and from flat dicts.
+    By default, unmapped array targets keep their initial values. With
+    strict=True, every array-valued destination and source key must be
+    covered by the rules unless explicitly excepted. Non-array NNX state
+    is always preserved, and is not considered a destination for coverage.
+
+    Some HF models expose aliases for tied weights (e.g. lm_head.weight).
+    List them explicitly in allow_unused_src rather than implicitly ignoring
+    all additional source entries.
     """
 
     src = src_model.state_dict()
@@ -94,6 +104,9 @@ def model_mapper(
         rules=rules,
         convert=torch_to_jax,
         transpose_last_two=transpose_torch_last_two,
+        strict=strict,
+        allow_unmapped_dst=allow_unmapped_dst,
+        allow_unused_src=allow_unused_src,
     )
 
     return result.map(lambda post: rebuild_model(graphdef, pre | post))
@@ -103,8 +116,19 @@ def model_mapper_or_raise(
     src_model: HFModelLike,
     flax_model: Module,
     rules: Sequence[MappingRule[ModelParamKey, HFParamKey]],
+    *,
+    strict: bool = False,
+    allow_unmapped_dst: Collection[ModelParamKey] = (),
+    allow_unused_src: Collection[HFParamKey] = (),
 ) -> Module:
-    result = model_mapper(src_model, flax_model, rules)
+    result = model_mapper(
+        src_model,
+        flax_model,
+        rules,
+        strict=strict,
+        allow_unmapped_dst=allow_unmapped_dst,
+        allow_unused_src=allow_unused_src,
+    )
 
     if isinstance(result, Success):
         return result.unwrap()
