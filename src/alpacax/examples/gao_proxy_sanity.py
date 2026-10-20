@@ -104,7 +104,7 @@ class PairBatches:
                 np.random.default_rng(self.seed + epoch).shuffle(indices)
             for start in range(0, len(indices), self.batch_size):
                 batch = indices[start : start + self.batch_size]
-                yield jnp.asarray(self.pairs[batch]), jnp.asarray(self.labels[batch])
+                yield jnp.asarray(self.pairs[batch]), jnp.asarray(self.labels[batch])  # pyright: ignore[reportUnknownMemberType]
 
 
 class ProxyReward(nnx.Module):
@@ -122,14 +122,14 @@ def preference_loss(model: nnx.Module, pairs: Array, labels: Array) -> tuple[Arr
     """Bradley-Terry negative log likelihood for pairwise gold preferences."""
     rewards = model(pairs)
     logits = rewards[:, 0] - rewards[:, 1]
-    loss = optax.sigmoid_binary_cross_entropy(logits, labels).mean()
+    loss = optax.sigmoid_binary_cross_entropy(logits, labels).mean()  # pyright: ignore[reportUnknownMemberType]
     return loss, logits
 
 
 class HistoryLogger:
     def __init__(self, name: str, rows: list[dict[str, object]]) -> None:
-        self.name = name
-        self.rows = rows
+        self.name: str = name
+        self.rows: list[dict[str, object]] = rows
 
     def log(self, metrics: dict[str, float], step: int) -> None:
         loss = metrics["loss"]
@@ -159,9 +159,9 @@ def best_of_n_rows(pool: np.ndarray, proxy: np.ndarray) -> list[dict[str, float 
                 "proxy_mean": float(np.mean(predicted[index, selected])),
                 "gold_mean": float(np.mean(gold[index, selected])),
                 "random_gold_mean": float(np.mean(gold[:, :n])),
-                "oracle_gold_mean": float(np.mean(gold_oracle)),
+                "oracle_gold_mean": float(np.mean(gold_oracle)),  # pyright: ignore[reportUnknownArgumentType]
                 "length_only_gold_mean": float(np.mean(gold[index, longest])),
-                "selected_length_mean": float(np.mean(pool[index, selected, 1])),
+                "selected_length_mean": float(np.mean(pool[index, selected, 1])),  # pyright: ignore[reportUnknownArgumentType]
             }
         )
     return output
@@ -238,16 +238,16 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
         if resumed_step != expected_steps:
             raise AssertionError(f"Expected restored step {expected_steps}, got {resumed_step}")
 
-        model.eval()
-        restored_model.eval()
-        candidate_array = jnp.asarray(pool)
+        model.eval()  # pyright: ignore[reportUnknownMemberType]
+        restored_model.eval()  # pyright: ignore[reportUnknownMemberType]
+        candidate_array = jnp.asarray(pool)  # pyright: ignore[reportUnknownMemberType]
         proxy = np.asarray(model(candidate_array))
         restored_proxy = np.asarray(restored_model(candidate_array))
         np.testing.assert_allclose(proxy, restored_proxy, rtol=1e-6, atol=1e-6)
 
-    validation_rewards = np.asarray(model(jnp.asarray(valid_x)))
+    validation_rewards = np.asarray(model(jnp.asarray(valid_x)))  # pyright: ignore[reportUnknownMemberType]
     validation_logit = validation_rewards[:, 0] - validation_rewards[:, 1]
-    preference_accuracy = float(np.mean((validation_logit > 0) == (valid_y > 0)))
+    preference_accuracy = float(np.mean((validation_logit > 0) == (valid_y > 0)))  # pyright: ignore[reportUnknownArgumentType]
     rows = best_of_n_rows(pool, proxy)
     summary: dict[str, object] = {
         "settings": {**asdict(settings), "output_dir": str(settings.output_dir)},
