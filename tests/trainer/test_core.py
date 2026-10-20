@@ -212,3 +212,25 @@ def test_run_with_short_loader_uses_actual_final_step() -> None:
     run(runner)
 
     assert seen == [2]
+
+def test_resumed_runner_uses_global_step_for_hooks() -> None:
+    seen: list[int] = []
+    train = make_train_phase(loader=[(1, 1), (2, 2), (3, 3)])
+    runner = Runner(
+        train=train,
+        hooks=(HookEntry(lambda ctx: seen.append(ctx.step), every=100, lead_only=False),),
+        start_step=199,
+        max_steps=2,
+    )
+
+    run(runner)
+
+    assert seen == [200, 201]
+    assert train.metrics.count == 2
+
+
+def test_run_rejects_negative_resume_step() -> None:
+    runner = Runner(train=make_train_phase(loader=[(1, 1)]), start_step=-1)
+
+    with pytest.raises(ValueError, match="start_step must be non-negative"):
+        run(runner)
