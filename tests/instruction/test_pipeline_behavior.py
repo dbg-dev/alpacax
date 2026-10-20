@@ -1,3 +1,6 @@
+# pyright: reportPrivateUsage=false
+# These tests intentionally exercise internal pipeline stages.
+
 from returns.result import Success
 
 from alpacax.pipelines.instruction.config import PipelineConfig

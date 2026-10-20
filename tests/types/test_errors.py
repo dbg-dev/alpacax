@@ -1,8 +1,9 @@
+from typing import Any, override
 from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel, ValidationError
-from pydantic_core import InitErrorDetails, PydanticCustomError
+from pydantic_core import ErrorDetails, InitErrorDetails, PydanticCustomError
 from returns.result import Failure, Success
 
 from alpacax.types.errors import RowError, annotate_failure, format_error
@@ -80,7 +81,9 @@ def test_format_error_returns_first_pydantic_validation_message():
 
 def test_format_error_falls_back_to_str_for_validation_error_without_errors():
     class EmptyValidationError(ValidationError):
-        def errors(self, *args, **kwargs):
+        @override
+        def errors(self, *args: Any, **kwargs: Any) -> list[ErrorDetails]:
+            del args, kwargs
             return []
 
     error = EmptyValidationError.from_exception_data(

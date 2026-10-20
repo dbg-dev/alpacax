@@ -8,9 +8,10 @@ from alpacax.trainer.core import EmptyDataloaderError, run
 
 class FakeMetric:
     def __init__(self) -> None:
-        self.count = 0
+        self.count: int = 0
 
-    def update(self, *, loss, logits=None, labels=None) -> None:
+    def update(self, *, loss: object, logits: object = None, labels: object = None) -> None:
+        del loss, logits, labels
         self.count += 1
 
     def compute(self) -> dict[str, float]:
@@ -28,7 +29,7 @@ class FakeModel:
     """Stands in for an NNX module: records train()/eval() mode switches."""
 
     def __init__(self, mode: str = "train") -> None:
-        self.mode = mode
+        self.mode: str = mode
 
     def train(self) -> None:
         self.mode = "train"
@@ -42,7 +43,10 @@ def make_train_phase(
 ) -> TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object]:
     metric = FakeMetric()
 
-    def step(model, optimizer, metrics, x, y) -> None:
+    def step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
+        del model, optimizer
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return TrainPhase(
@@ -101,7 +105,9 @@ def test_run_puts_train_model_in_train_mode_for_every_step() -> None:
     train = make_train_phase(loader=[("x0", "y0"), ("x1", "y1")], model=model)
     inner_step = train.step
 
-    def recording_step(model, optimizer, metrics, x, y) -> None:
+    def recording_step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
         modes_seen.append(model.mode)
         inner_step(model, optimizer, metrics, x, y)
 
@@ -181,7 +187,7 @@ def test_final_hook_runs_at_max_steps_without_duplicate() -> None:
 def test_max_steps_does_not_consume_an_extra_batch() -> None:
     yielded: list[int] = []
 
-    def loader():
+    def loader() -> Iterable[tuple[int, int]]:
         for i in range(5):
             yielded.append(i)
             yield i, i

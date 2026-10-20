@@ -3,8 +3,8 @@ from alpacax.trainer.factories import make_runner
 
 
 class FakeMetric:
-    def update(self, **kwargs) -> None:
-        pass
+    def update(self, **kwargs: object) -> None:
+        del kwargs
 
     def compute(self) -> dict[str, float]:
         return {}
@@ -26,10 +26,12 @@ class FakeModel:
 
 
 def test_make_runner_normalises_hooks_to_tuple() -> None:
-    def train_step(model, optimizer, metrics, x, y) -> None:
-        pass
+    def train_step(
+        model: FakeModel, optimizer: FakeOptimizer, metrics: FakeMetric, x: object, y: object
+    ) -> None:
+        del model, optimizer, metrics, x, y
 
-    train = TrainPhase(
+    train = TrainPhase[FakeModel, FakeOptimizer, FakeMetric, object, object](
         model=FakeModel(),
         optimizer=FakeOptimizer(),
         loader=[],

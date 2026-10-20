@@ -9,15 +9,15 @@ from alpacax.trainer.losses import masked_cross_entropy_loss
 class ConstantLogitModel:
     def __call__(self, x: Array) -> Array:
         batch, seq = x.shape
-        logits = jnp.zeros((batch, seq, 3), dtype=jnp.float32)
+        logits = jnp.zeros((batch, seq, 3), dtype=jnp.float32)  # pyright: ignore[reportUnknownMemberType]
         # Make class 1 obviously preferred.
         return logits.at[..., 1].set(10.0)
 
 
 def test_masked_cross_entropy_loss_ignores_minus_100_labels() -> None:
     model = ConstantLogitModel()
-    x = jnp.ones((1, 3), dtype=jnp.int32)
-    y = jnp.array([[1, -100, 1]], dtype=jnp.int32)
+    x = jnp.ones((1, 3), dtype=jnp.int32)  # pyright: ignore[reportUnknownMemberType]
+    y = jnp.array([[1, -100, 1]], dtype=jnp.int32)  # pyright: ignore[reportUnknownMemberType]
 
     loss, logits = masked_cross_entropy_loss(model, x, y)
 

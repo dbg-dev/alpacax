@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from alpacax.trainer.checkpoints import CheckpointPayload
 from alpacax.trainer.contracts import (
+    CheckpointPayload,
     EvalPhase,
     HookContext,
     HookEntry,
@@ -61,7 +61,7 @@ class FakeModel:
     """Stands in for an NNX module: records train()/eval() mode switches."""
 
     def __init__(self, mode: str = "train") -> None:
-        self.mode = mode
+        self.mode: str = mode
 
     def train(self) -> None:
         self.mode = "train"
@@ -83,6 +83,7 @@ def make_train_phase(
         x: object,
         y: object,
     ) -> None:
+        del model, optimizer
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return TrainPhase(
@@ -102,6 +103,7 @@ def make_eval_phase(
     step: Callable[[FakeModel, FakeMetric, object, object], None] | None = None,
 ) -> EvalPhase[FakeModel, FakeMetric, object, object]:
     def default_step(model: FakeModel, metrics: FakeMetric, x: object, y: object) -> None:
+        del model
         metrics.update(loss=1.0, logits=x, labels=y)
 
     return EvalPhase(
@@ -193,7 +195,7 @@ def test_eval_hook_runs_steps_in_eval_mode_then_restores_train_mode() -> None:
     model = FakeModel(mode="train")
     modes_seen: list[str] = []
 
-    def recording_step(model: FakeModel, metrics: FakeMetric, x, y) -> None:
+    def recording_step(model: FakeModel, metrics: FakeMetric, x: object, y: object) -> None:
         modes_seen.append(model.mode)
         metrics.update(loss=1.0, logits=x, labels=y)
 
@@ -213,7 +215,8 @@ def test_eval_hook_runs_steps_in_eval_mode_then_restores_train_mode() -> None:
 def test_eval_hook_restores_train_mode_when_eval_step_raises() -> None:
     model = FakeModel(mode="train")
 
-    def failing_step(model: FakeModel, metrics: FakeMetric, x, y) -> None:
+    def failing_step(model: FakeModel, metrics: FakeMetric, x: object, y: object) -> None:
+        del model, metrics, x, y
         raise RuntimeError("boom")
 
     ctx = HookContext(
@@ -272,6 +275,7 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
             return Path(f"/fake/checkpoints/{step}")
 
         def restore(self, target: CheckpointPayload, path: Path | None = None) -> CheckpointPayload:
+            del target, path
             raise FileNotFoundError("No checkpoint available")
 
         def latest(self) -> Path | None:
@@ -294,7 +298,9 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
         "metadata": {"step": 42},
     }
 
-    def fake_payload_fn(model, optimizer, metadata):
+    def fake_payload_fn(
+        model: FakeModel, optimizer: FakeOptimizer, metadata: dict[str, object]
+    ) -> CheckpointPayload:
         assert model is train.model
         assert optimizer is train.optimizer
         assert metadata == {"step": 42}
@@ -315,7 +321,14 @@ def test_checkpoint_entry_runs_on_non_lead_process(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("alpacax.trainer.hooks.is_lead_process", lambda: False)
     checkpointer = Mock()
     payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {"step": 2}}
-    entry = checkpoint_entry(checkpointer, every=2, payload_fn=lambda **_: payload)
+
+    def payload_fn(
+        *, model: object, optimizer: object, metadata: dict[str, object]
+    ) -> CheckpointPayload:
+        del model, optimizer, metadata
+        return payload
+
+    entry = checkpoint_entry(checkpointer, every=2, payload_fn=payload_fn)
     ctx = HookContext(step=2, train=make_train_phase())
 
     assert entry.lead_only is False
@@ -326,7 +339,14 @@ def test_checkpoint_entry_runs_on_non_lead_process(monkeypatch: pytest.MonkeyPat
 def test_checkpoint_entry_respects_interval_and_final_flush() -> None:
     checkpointer = Mock()
     payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {}}
-    entry = checkpoint_entry(checkpointer, every=100, payload_fn=lambda **_: payload)
+
+    def payload_fn(
+        *, model: object, optimizer: object, metadata: dict[str, object]
+    ) -> CheckpointPayload:
+        del model, optimizer, metadata
+        return payload
+
+    entry = checkpoint_entry(checkpointer, every=100, payload_fn=payload_fn)
     ctx = HookContext(step=101, train=make_train_phase())
 
     run_hooks(ctx, (entry,))

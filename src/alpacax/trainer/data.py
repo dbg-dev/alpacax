@@ -71,7 +71,7 @@ class PaddedBatchLoader:
 
             inputs = np.asarray([sample.input_ids for sample in batch], dtype=np.int32)
             labels = np.asarray([sample.labels for sample in batch], dtype=np.int32)
-            yield jnp.asarray(inputs), jnp.asarray(labels)
+            yield jnp.asarray(inputs), jnp.asarray(labels)  # pyright: ignore[reportUnknownMemberType]
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,4 +162,4 @@ class BucketedBatchLoader:
                 inputs[row, :length] = sample.input_ids
                 labels[row, :length] = sample.labels
 
-            yield jnp.asarray(inputs), jnp.asarray(labels)
+            yield jnp.asarray(inputs), jnp.asarray(labels)  # pyright: ignore[reportUnknownMemberType]

@@ -10,7 +10,8 @@ def validate_raw_dataset(raw: Any) -> list[dict[str, Any]]:
     if not isinstance(raw, list):
         raise ValueError("expected dataset JSON to be a list")
 
-    invalid_rows = [index for index, row in enumerate(raw) if not isinstance(row, dict)]
+    rows = cast(list[Any], raw)
+    invalid_rows = [index for index, row in enumerate(rows) if not isinstance(row, dict)]
 
     if invalid_rows:
         preview = invalid_rows[:10]

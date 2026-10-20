@@ -6,7 +6,7 @@ from alpacax.pipelines.instruction.transforms import (
     shuffle,
     split_samples,
 )
-from alpacax.types.models import AlpacaSample, Instruction, SplitConfig
+from alpacax.types.models import AlpacaSample, DatasetSplit, Instruction, SplitConfig
 
 ##
 ## padding
@@ -92,7 +92,9 @@ def test_shuffle():
 
 def test_split_samples():
     ls = list(range(10))
-    act = split_samples(ls, skipped=None, weights=SplitConfig(train=0.5, validation=0.4, test=0.1))
+    act: DatasetSplit[int, object] = split_samples(
+        ls, skipped=None, weights=SplitConfig(train=0.5, validation=0.4, test=0.1)
+    )
 
     assert act.train == [0, 1, 2, 3, 4]
     assert act.validation == [5, 6, 7, 8]
@@ -105,5 +107,5 @@ def test_split_samples_accounts_for_all_items():
     weights = SplitConfig(train=0.8, validation=0.1, test=0.1)
     for n in range(1, 20):
         samples = list(range(n))
-        result = split_samples(samples, skipped=None, weights=weights)
+        result: DatasetSplit[int, object] = split_samples(samples, skipped=None, weights=weights)
         assert len(result.train) + len(result.validation) + len(result.test) == n

@@ -5,7 +5,12 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from flax.nnx import Module, Optimizer, state, update
+from flax.nnx import (
+    Module,
+    Optimizer,
+    state,  # pyright: ignore[reportUnknownVariableType]
+    update,  # pyright: ignore[reportUnknownVariableType]
+)
 from orbax.checkpoint import CheckpointManager, CheckpointManagerOptions, args
 
 from .contracts import Checkpointer, CheckpointPayload
@@ -130,8 +135,8 @@ def restore_training_state[ModelT: Module](
     restored = checkpointer.restore(target, path)
     completed_step = restored["metadata"]["step"]
     if (
-        not isinstance(completed_step, Integral)
-        or isinstance(completed_step, bool)
+        isinstance(completed_step, bool)
+        or not isinstance(completed_step, Integral)
         or completed_step < 0
     ):
         raise ValueError("Checkpoint metadata must contain a non-negative integer 'step'")
