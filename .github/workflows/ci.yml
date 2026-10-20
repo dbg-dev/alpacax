@@ -83,6 +83,9 @@ jobs:
 
       - name: Run tests
         run: uv run --no-sync pytest
+      - name: Gao curve diagnostic (temporary)
+        if: matrix.python-version == '3.12'
+        run: uv run --no-sync python -m alpacax.examples.gao_proxy_sanity --seed 42 --output-dir /tmp/gao-curve-diagnostic-42
 
       # This test is optional for local runs but mandatory in CI. Install
       # transformers here rather than adding it to the runtime HF adapter extra.
