@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -13,7 +14,13 @@ from alpacax.trainer.contracts import (
     HookEntry,
     TrainPhase,
 )
-from alpacax.trainer.hooks import checkpoint_hook, eval_hook, logging_hook, run_hooks
+from alpacax.trainer.hooks import (
+    checkpoint_entry,
+    checkpoint_hook,
+    eval_hook,
+    logging_hook,
+    run_hooks,
+)
 
 
 class FakeMetric:
@@ -264,7 +271,9 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
             self.calls.append((state, step))
             return Path(f"/fake/checkpoints/{step}")
 
-        def restore(self, path: Path | None = None) -> CheckpointPayload:
+        def restore(
+            self, target: CheckpointPayload, path: Path | None = None
+        ) -> CheckpointPayload:
             raise FileNotFoundError("No checkpoint available")
 
         def latest(self) -> Path | None:
@@ -272,6 +281,9 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
 
         def exists(self) -> bool:
             return False
+
+        def wait_until_finished(self) -> None:
+            pass
 
         def close(self) -> None:
             pass
@@ -299,3 +311,27 @@ def test_checkpoint_hook_calls_checkpointer_with_payload() -> None:
     )(ctx)
 
     assert checkpointer.calls == [(payload, 42)]
+
+
+def test_checkpoint_entry_runs_on_non_lead_process(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("alpacax.trainer.hooks.is_lead_process", lambda: False)
+    checkpointer = Mock()
+    payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {"step": 2}}
+    entry = checkpoint_entry(checkpointer, every=2, payload_fn=lambda **_: payload)
+    ctx = HookContext(step=2, train=make_train_phase())
+
+    assert entry.lead_only is False
+    run_hooks(ctx, (entry,))
+    checkpointer.save.assert_called_once_with(payload, step=2)
+
+
+def test_checkpoint_entry_respects_interval_and_final_flush() -> None:
+    checkpointer = Mock()
+    payload: CheckpointPayload = {"model": {}, "optimizer": {}, "metadata": {}}
+    entry = checkpoint_entry(checkpointer, every=100, payload_fn=lambda **_: payload)
+    ctx = HookContext(step=101, train=make_train_phase())
+
+    run_hooks(ctx, (entry,))
+    checkpointer.save.assert_not_called()
+    run_hooks(ctx, (entry,), final=True)
+    checkpointer.save.assert_called_once_with(payload, step=101)
