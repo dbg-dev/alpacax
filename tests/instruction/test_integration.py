@@ -1,5 +1,6 @@
 import json
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, override
 from pathlib import Path
 from threading import Thread
 
@@ -14,13 +15,14 @@ class FakeTokenizer:
         return [ord(char) for char in text]
 
 
-def serve_directory(directory: Path):
+def serve_directory(directory: Path) -> ThreadingHTTPServer:
     class Handler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, directory=str(directory), **kwargs)
 
-        def log_message(self, *args, **kwargs):
-            pass
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            del format, args
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, daemon=True)
@@ -28,7 +30,7 @@ def serve_directory(directory: Path):
     return server
 
 
-def test_build_dataset_integration_success(tmp_path):
+def test_build_dataset_integration_success(tmp_path: Path) -> None:
     dataset = [
         {
             "instruction": "Say hello",
