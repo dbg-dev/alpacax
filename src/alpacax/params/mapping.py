@@ -8,7 +8,7 @@ transpose where the declared mapping makes that unambiguous.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, Protocol, assert_never
@@ -69,8 +69,15 @@ def rule[DstKey: Hashable, SrcKey: Hashable](
 
 @dataclass(frozen=True, slots=True)
 class MappingError[DstKey, SrcKey]:
-    kind: Literal["missing_src", "missing_dst", "shape_mismatch", "ambiguous_transform"]
-    dst: DstKey
+    kind: Literal[
+        "missing_src",
+        "missing_dst",
+        "shape_mismatch",
+        "ambiguous_transform",
+        "unmapped_dst",
+        "unused_src",
+    ]
+    dst: DstKey | None
     src: SrcKey | None = None
     dst_shape: Shape | None = None
     src_shape: Shape | None = None
@@ -217,11 +224,43 @@ def resolve_rules[
     src: Mapping[SrcKey, SrcValue],
     dst: Mapping[DstKey, DstValue],
     rules: Sequence[MappingRule[DstKey, SrcKey]],
+    *,
+    strict: bool = False,
+    allow_unmapped_dst: Collection[DstKey] = (),
+    allow_unused_src: Collection[SrcKey] = (),
 ) -> Result[
     list[ResolvedRule[DstKey, SrcKey, DstValue, SrcValue]],
     list[MappingError[DstKey, SrcKey]],
 ]:
+    """Resolve rules and optionally require full key coverage.
+
+    In permissive mode, destinations absent from the rules keep their initial
+    values, and extra source keys are ignored. Strict mode detects both gaps.
+    Exception lists are explicit because some checkpoints expose aliases for
+    tied weights or contain intentionally uninitialised destination arrays.
+
+    Coverage is based on declared rule keys. A declared but invalid rule still
+    fails through its own missing-key, shape, or transform error.
+    """
     resolved, errors = partition_results([resolve_rule(src, dst, rule) for rule in rules])
+
+    if strict:
+        declared_dst = {rule.dst for rule in rules}
+        declared_src = {rule.src for rule in rules}
+        allowed_dst = set(allow_unmapped_dst)
+        allowed_src = set(allow_unused_src)
+
+        errors.extend(
+            MappingError(kind="unmapped_dst", dst=key)
+            for key in dst
+            if key not in declared_dst and key not in allowed_dst
+        )
+        errors.extend(
+            MappingError(kind="unused_src", dst=None, src=key)
+            for key in src
+            if key not in declared_src and key not in allowed_src
+        )
+
     if errors:
         return Failure(errors)
     return Success(resolved)
@@ -273,10 +312,23 @@ def map_param_dict[
     rules: Sequence[MappingRule[DstKey, SrcKey]],
     convert: Callable[[SrcValue], DstValue],
     transpose_last_two: Callable[[SrcValue], SrcValue],
+    strict: bool = False,
+    allow_unmapped_dst: Collection[DstKey] = (),
+    allow_unused_src: Collection[SrcKey] = (),
 ) -> Result[dict[DstKey, DstValue], list[MappingError[DstKey, SrcKey]]]:
-    """Resolve and apply mapping rules in one Result-returning operation."""
+    """Resolve and apply rules, optionally requiring complete key coverage.
 
-    return resolve_rules(src, dst, rules).map(
+    Without strict mode, unmapped destination values retain their initialization.
+    """
+
+    return resolve_rules(
+        src,
+        dst,
+        rules,
+        strict=strict,
+        allow_unmapped_dst=allow_unmapped_dst,
+        allow_unused_src=allow_unused_src,
+    ).map(
         lambda resolved: apply_resolved_rules(
             dst,
             resolved,
@@ -321,6 +373,10 @@ def format_mapping_error[DstKey, SrcKey](error: MappingError[DstKey, SrcKey]) ->
                 f"src={error.src!r} src_shape={error.src_shape}; "
                 "specify IDENTITY or TRANSPOSE_LAST_TWO explicitly"
             )
+        case "unmapped_dst":
+            return f"unmapped destination parameter: {error.dst!r}"
+        case "unused_src":
+            return f"unused source parameter: {error.src!r}"
         case _:
             assert_never(error.kind)
 

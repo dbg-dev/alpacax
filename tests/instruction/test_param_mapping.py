@@ -10,6 +10,7 @@ from alpacax.params.mapping import (
     TensorLike,
     TransformKind,
     format_mapping_error,
+    format_mapping_errors,
     infer_transform,
     map_param_dict,
     resolve_rules,
@@ -217,3 +218,113 @@ def test_reverse_rules_swaps_source_and_destination():
     assert reverse_rules(rules) == [
         MappingRule(dst="hf", src="local", transform=TransformKind.AUTO)
     ]
+
+
+def test_strict_mode_reports_all_missing_coverage_in_one_failure() -> None:
+    src = {"a": np.array([1, 2]), "extra": np.array([3])}
+    dst = {"x": np.array([0, 0]), "untouched": np.array([9])}
+    rules = [MappingRule(dst="x", src="a")]
+
+    result = map_param_dict(
+        src=src,
+        dst=dst,
+        rules=rules,
+        convert=lambda x: x,
+        transpose_last_two=lambda x: x.T,
+        strict=True,
+    )
+
+    assert isinstance(result, Failure)
+    assert result.failure() == [
+        MappingError(kind="unmapped_dst", dst="untouched"),
+        MappingError(kind="unused_src", dst=None, src="extra"),
+    ]
+    message = format_mapping_errors(result.failure())
+    assert "unmapped destination parameter: 'untouched'" in message
+    assert "unused source parameter: 'extra'" in message
+
+
+def test_strict_mode_honours_explicit_exceptions_for_tied_weights() -> None:
+    src = {"a": np.array([1]), "lm_head.weight": np.array([1])}
+    dst = {"x": np.array([0]), "optional": np.array([9])}
+    result = map_param_dict(
+        src=src,
+        dst=dst,
+        rules=[MappingRule(dst="x", src="a")],
+        convert=lambda x: x,
+        transpose_last_two=lambda x: x.T,
+        strict=True,
+        allow_unmapped_dst=("optional",),
+        allow_unused_src=("lm_head.weight",),
+    )
+
+    assert isinstance(result, Success)
+    np.testing.assert_array_equal(result.unwrap()["x"], np.array([1]))
+    np.testing.assert_array_equal(result.unwrap()["optional"], np.array([9]))
+
+
+def test_strict_mode_accepts_shared_source_keys() -> None:
+    src = {"shared": np.array([3])}
+    dst = {"one": np.array([0]), "two": np.array([0])}
+    result = resolve_rules(
+        src,
+        dst,
+        [
+            MappingRule(dst="one", src="shared"),
+            MappingRule(dst="two", src="shared"),
+        ],
+        strict=True,
+    )
+    assert isinstance(result, Success)
+    assert len(result.unwrap()) == 2
+
+
+def test_strict_mode_combines_rule_errors_with_coverage_errors() -> None:
+    src = {"unused": np.array([1])}
+    dst = {"mapped": np.array([0]), "unmapped": np.array([0])}
+    result = resolve_rules(
+        src,
+        dst,
+        [MappingRule(dst="mapped", src="missing")],
+        strict=True,
+    )
+    assert isinstance(result, Failure)
+    assert [error.kind for error in result.failure()] == [
+        "missing_src",
+        "unmapped_dst",
+        "unused_src",
+    ]
+
+
+def test_strict_failure_does_not_apply_any_updates() -> None:
+    src = {"a": np.array([1]), "extra": np.array([2])}
+    dst = {"x": np.array([0])}
+    conversions: list[bool] = []
+
+    def convert(value: np.ndarray) -> np.ndarray:
+        conversions.append(True)
+        return value
+
+    result = map_param_dict(
+        src=src,
+        dst=dst,
+        rules=[MappingRule(dst="x", src="a")],
+        convert=convert,
+        transpose_last_two=lambda x: x.T,
+        strict=True,
+    )
+    assert isinstance(result, Failure)
+    assert not conversions
+    np.testing.assert_array_equal(dst["x"], np.array([0]))
+
+
+def test_permissive_mode_still_accepts_extra_source_and_destination_keys() -> None:
+    result = map_param_dict(
+        src={"a": np.array([1]), "extra": np.array([99])},
+        dst={"x": np.array([0]), "random_init": np.array([42])},
+        rules=[MappingRule(dst="x", src="a")],
+        convert=lambda x: x,
+        transpose_last_two=lambda x: x.T,
+    )
+    assert isinstance(result, Success)
+    np.testing.assert_array_equal(result.unwrap()["random_init"], np.array([42]))
