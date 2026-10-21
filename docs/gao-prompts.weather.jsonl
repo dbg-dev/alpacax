@@ -1,0 +1,24 @@
+{"prompt_id":"train-town","split":"train","prompt":"Dark clouds gathered above the town square. The afternoon forecast warned of ","target":"rain"}
+{"prompt_id":"train-garden","split":"train","prompt":"The gardener looked up at the overcast sky. The weather report said to expect ","target":"rain"}
+{"prompt_id":"train-coast","split":"train","prompt":"The fishing boat was heading toward a line of dark clouds. The captain warned the crew about ","target":"rain"}
+{"prompt_id":"train-football","split":"train","prompt":"The referee checked the weather before kickoff. The forecast for the match called for ","target":"rain"}
+{"prompt_id":"train-city","split":"train","prompt":"Commuters hurried along the street beneath a grey sky. The radio forecast mentioned ","target":"rain"}
+{"prompt_id":"train-picnic","split":"train","prompt":"The family checked the weather before deciding whether to hold their picnic. The forecast suggested ","target":"rain"}
+{"prompt_id":"train-river","split":"train","prompt":"The river had been rising for days. The weather service warned that more ","target":"rain"}
+{"prompt_id":"train-farm","split":"train","prompt":"The farmer inspected the parched fields and hoped the clouds might finally bring ","target":"rain"}
+{"prompt_id":"train-mountain","split":"train","prompt":"The hikers considered turning back as clouds rolled over the mountain. They expected ","target":"rain"}
+{"prompt_id":"train-school","split":"train","prompt":"Parents waited outside the school as the sky grew darker. Forecasters predicted ","target":"rain"}
+{"prompt_id":"train-stadium","split":"train","prompt":"The cricket match was delayed as the umpires studied the sky. They were worried about ","target":"rain"}
+{"prompt_id":"train-orchard","split":"train","prompt":"The orchard owner watched the weekend weather report closely. It called for ","target":"rain"}
+{"prompt_id":"validation-marina","split":"validation","prompt":"The marina manager secured the boats before the weather changed. The latest forecast mentioned ","target":"rain"}
+{"prompt_id":"validation-village","split":"validation","prompt":"The village fair was scheduled for Sunday, but the local weather forecast warned of ","target":"rain"}
+{"prompt_id":"validation-campsite","split":"validation","prompt":"The campers woke to a heavy sky and switched on the radio forecast. It predicted ","target":"rain"}
+{"prompt_id":"validation-bridge","split":"validation","prompt":"Traffic slowed across the bridge as the clouds thickened. Forecasters expected ","target":"rain"}
+{"prompt_id":"test-station","split":"test","prompt":"Passengers waited on the exposed railway platform as dark clouds rolled in. The forecast warned of ","target":"rain"}
+{"prompt_id":"test-lighthouse","split":"test","prompt":"The lighthouse keeper watched the horizon darken over the sea. The marine weather forecast mentioned ","target":"rain"}
+{"prompt_id":"test-park","split":"test","prompt":"The park ranger checked the weather before opening the trails. The afternoon forecast called for ","target":"rain"}
+{"prompt_id":"test-airport","split":"test","prompt":"At the airport, the ground crew studied an approaching weather system. The forecast predicted ","target":"rain"}
+{"prompt_id":"test-canal","split":"test","prompt":"The canal boat owner pulled a cover over the deck as the sky darkened. The weather report warned of ","target":"rain"}
+{"prompt_id":"test-valley","split":"test","prompt":"The walkers looked toward the clouds gathering over the valley. They had been told to expect ","target":"rain"}
+{"prompt_id":"test-market","split":"test","prompt":"Stallholders at the outdoor market checked the forecast before setting up. The forecast suggested ","target":"rain"}
+{"prompt_id":"test-harbour","split":"test","prompt":"The harbour master looked at the sky and read the shipping forecast. The next few hours could bring ","target":"rain"}

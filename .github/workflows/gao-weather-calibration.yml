@@ -1,0 +1,53 @@
+name: Gao weather prompt calibration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - docs/gao-prompts.weather.jsonl
+      - devtools/gao_gold_calibration.py
+      - tests/instruction/test_gao_gold_calibration.py
+      - .github/workflows/gao-weather-calibration.yml
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.1'
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv python install 3.12
+      - name: Install GPT-2 runtime
+        run: uv sync --extra train --extra huggingface
+      - name: Cache frozen GPT-2 continuations
+        run: |
+          uv run --extra train --extra huggingface --with 'transformers>=4.57,<5' \
+            python -m alpacax.examples.gao_gpt2_candidates \
+            --prompts-path docs/gao-prompts.weather.jsonl \
+            --output-path runs/gao-weather/candidates.jsonl \
+            --seed 42 --candidates-per-prompt 16 \
+            --max-new-tokens 20 --batch-size 4
+      - name: Report gold-label diversity
+        run: |
+          uv run --no-sync python devtools/gao_gold_calibration.py \
+            --cache-path runs/gao-weather/candidates.jsonl \
+            --output-path runs/gao-weather/calibration.json
+      - name: Upload calibration data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gao-weather-calibration
+          path: |
+            runs/gao-weather/candidates.jsonl
+            runs/gao-weather/calibration.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,81 @@
+name: Gao weather best-of-N pilot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/gao-weather-proxy-pilot.yml
+      - devtools/gao_epoch_sweep.py
+      - src/alpacax/examples/gao_text_best_of_n.py
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  train-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.1'
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv python install 3.12
+      - name: Install training dependencies
+        run: uv sync --extra train
+      - name: Reuse the fixed, calibrated 384-completion cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p runs/gao-weather
+          gh run download 39615342750 --repo dbg-dev/alpacax \
+            --name gao-weather-calibration --dir runs/gao-weather
+          test -s runs/gao-weather/candidates.jsonl
+          test -s runs/gao-weather/calibration.json
+          sha256sum runs/gao-weather/candidates.jsonl
+      - name: Train six duration-controlled Bradley-Terry runs
+        run: |
+          for source in prompt_and_completion completion_only; do
+            for epochs in 10 50 100; do
+              name="${source}-ep${epochs}"
+              uv run --no-sync python -m alpacax.examples.gao_text_best_of_n \
+                --cache-path runs/gao-weather/candidates.jsonl \
+                --output-dir "runs/gao-weather/$name" \
+                --feature-source "$source" \
+                --seed 42 --max-features 256 --epochs "$epochs" \
+                --learning-rate 0.01 --weight-decay 0.01 --batch-size 32
+            done
+          done
+      - name: Score all held-out candidate pools
+        run: |
+          for source in prompt_and_completion completion_only; do
+            for epochs in 10 50 100; do
+              uv run --no-sync python devtools/gao_rank_diagnostics.py \
+                --run-dir "runs/gao-weather/${source}-ep${epochs}"
+            done
+          done
+      - name: Compare duration sweep and select using validation only
+        run: |
+          uv run --no-sync python devtools/gao_epoch_sweep.py \
+            --base-dir runs/gao-weather
+      - name: Preserve complete sweep
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gao-weather-epoch-sweep-seed42
+          path: |
+            runs/gao-weather/*-ep*/best_of_n.csv
+            runs/gao-weather/*-ep*/summary.json
+            runs/gao-weather/*-ep*/history.json
+            runs/gao-weather/*-ep*/held_out_candidates.csv
+            runs/gao-weather/*-ep*/feature_weights.csv
+            runs/gao-weather/*-ep*/ranking_diagnostics.json
+            runs/gao-weather/epoch_sweep.csv
+            runs/gao-weather/epoch_sweep.json
+          if-no-files-found: warn
+          retention-days: 7

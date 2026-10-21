@@ -154,3 +154,49 @@ candidates again.
 - For a stronger research claim, replace exact-token gold with a validated,
   independent evaluator and consider a stronger separately trained text proxy.
   Only then attempt scaling-law fits; no PPO/DPO in this stage.
+
+## Follow-up: weather-prompt calibration (experimental)
+
+The original eight-prompt pilot above is retained for reproducibility. A new
+[24-prompt weather calibration set](gao-prompts.weather.jsonl) uses **one
+literal gold target, `rain`**, across 12 train, 4 validation and 8 test
+prompts. Unlike the previous arbitrary `the` / `and` assignments, the
+target is thematically related to each context. This is still a **lexical
+proxy objective**, not a human judgment of quality.
+
+Generate 16 frozen GPT-2 completions per prompt at 20 new tokens using a
+fresh output path:
+
+```sh
+uv run --extra train --extra huggingface --with 'transformers>=4.57,<5' \
+  python -m alpacax.examples.gao_gpt2_candidates \
+  --prompts-path docs/gao-prompts.weather.jsonl \
+  --output-path runs/gao-weather/candidates.jsonl \
+  --seed 42 --candidates-per-prompt 16 --max-new-tokens 20 --batch-size 4
+```
+
+**Before training a new proxy**, assess exact gold-label diversity:
+
+```sh
+python devtools/gao_gold_calibration.py \
+  --cache-path runs/gao-weather/candidates.jsonl \
+  --output-path runs/gao-weather/calibration.json
+```
+
+For each prompt with binary gold mean `p`, the report includes
+`p(1-p)` within-prompt variance and oracle headroom `max(gold)-p`.
+A prompt with all positives or all negatives has no oracle headroom and
+cannot support a meaningful best-of-N comparison. The summary records
+the number of mixed-label prompts separately for each split.
+
+This calibration is run by
+[the experimental GitHub Actions workflow](../.github/workflows/gao-weather-calibration.yml)
+on a matching PR; its uploaded candidate cache and JSON report can be
+inspected without retraining or regenerating text.
+
+**Decision gate:** train the proxy and inspect BoN only if there are
+mixed-label prompts in both train and validation, and enough mixed test
+prompts to make a meaningful comparison. Otherwise adjust *calibration*
+prompts or sampling length first; do not tune the final held-out test
+prompts against their observed labels. Freeze the test design before
+claiming held-out generalisation.

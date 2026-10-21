@@ -19,7 +19,7 @@ import re
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import override
+from typing import Literal, override
 
 import jax.numpy as jnp
 import numpy as np
@@ -61,6 +61,7 @@ class Settings:
     output_dir: Path = Path("runs/gao-text-42")
     seed: int = 42
     max_features: int = 256
+    feature_source: Literal["prompt_and_completion", "completion_only"] = "prompt_and_completion"
     train_pairs_per_prompt: int = 16
     validation_pairs_per_prompt: int = 8
     batch_size: int = 32
@@ -253,6 +254,69 @@ def best_of_n_text(
     return output
 
 
+def save_text_diagnostics(
+    test_rows: dict[str, list[Candidate]],
+    embeddings: dict[tuple[str, int], np.ndarray],
+    model: TextProxyReward,
+    featurizer: TfidfFeatures,
+    output_dir: Path,
+) -> None:
+    """Export held-out response-level scores and interpretable linear weights.
+
+    Uses the same trained model and cached responses as the BoN curve.
+    No held-out candidates enter proxy training or TF-IDF fitting.
+    """
+    candidates_path = output_dir / "held_out_candidates.csv"
+    with candidates_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "prompt_id",
+                "candidate_index",
+                "gold",
+                "proxy_score",
+                "rank",
+                "selected_n8",
+                "selected_n16",
+                "token_count",
+                "completion",
+            ],
+        )
+        writer.writeheader()
+        for prompt_id, items in sorted(test_rows.items()):
+            features = np.stack([embeddings[(prompt_id, row.candidate_index)] for row in items])
+            scores = np.asarray(model(jnp.asarray(features))).reshape(-1)  # pyright: ignore[reportUnknownMemberType]
+            order = np.argsort(-scores, kind="stable")
+            ranks = np.empty(len(items), dtype=np.int32)
+            ranks[order] = np.arange(1, len(items) + 1)
+            selected_n8 = int(np.argmax(scores[: min(8, len(items))]))
+            selected_n16 = int(np.argmax(scores[: min(16, len(items))]))
+            for index, (row, score, rank) in enumerate(zip(items, scores, ranks, strict=True)):
+                writer.writerow(
+                    {
+                        "prompt_id": prompt_id,
+                        "candidate_index": row.candidate_index,
+                        "gold": int(gold_binary(row.completion, row.target)),
+                        "proxy_score": float(score),
+                        "rank": int(rank),
+                        "selected_n8": int(index == selected_n8),
+                        "selected_n16": int(index == selected_n16),
+                        "token_count": len(row.token_ids),
+                        "completion": row.completion,
+                    }
+                )
+
+    weights = np.asarray(model.linear.kernel.get_value()).reshape(-1)
+    weights_path = output_dir / "feature_weights.csv"
+    with weights_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["feature", "weight", "idf"])
+        writer.writeheader()
+        for term, idx in sorted(featurizer.vocabulary.items()):
+            writer.writerow(
+                {"feature": term, "weight": float(weights[idx]), "idf": float(featurizer.idf[idx])}
+            )
+
+
 def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[str, object]]:
     rows = load_cache(settings.cache_path)
     checkpoint_dir = settings.output_dir / "checkpoints"
@@ -260,7 +324,12 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
         raise FileExistsError(f"Run directory already contains checkpoints: {checkpoint_dir}")
     settings.output_dir.mkdir(parents=True, exist_ok=True)
 
-    texts = [f"{row.prompt}\n{row.completion}" for row in rows]
+    texts = [
+        f"{row.prompt}\n{row.completion}"
+        if settings.feature_source == "prompt_and_completion"
+        else row.completion
+        for row in rows
+    ]
     training_texts = [text for text, row in zip(texts, rows, strict=True) if row.split == "train"]
     featurizer = TfidfFeatures(settings.max_features)
     featurizer.fit(training_texts)  # A test completion must NEVER enter fit.
@@ -345,6 +414,7 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
     valid_predicted = valid_scores[:, 0] > valid_scores[:, 1]
     accuracy = float(np.mean(valid_predicted == (valid_y > 0)))  # pyright: ignore[reportUnknownArgumentType]
     bon = best_of_n_text(grouped(rows, "test"), embeddings, model)
+    save_text_diagnostics(grouped(rows, "test"), embeddings, model, featurizer, settings.output_dir)
     summary: dict[str, object] = {
         "settings": {
             **asdict(settings),
@@ -353,6 +423,7 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
         },
         "source": "cached frozen GPT-2 text completions",
         "feature_type": "training-only TF-IDF unigram + bigram",
+        "feature_source": settings.feature_source,
         "gold": "binary exact target phrase in completion (not human quality)",
         "held_out_preference_accuracy": accuracy,
         "usable_train_prompts": usable_train,
