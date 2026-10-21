@@ -253,7 +253,6 @@ def best_of_n_text(
     return output
 
 
-
 def save_text_diagnostics(
     test_rows: dict[str, list[Candidate]],
     embeddings: dict[tuple[str, int], np.ndarray],
@@ -271,8 +270,15 @@ def save_text_diagnostics(
         writer = csv.DictWriter(
             handle,
             fieldnames=[
-                "prompt_id", "candidate_index", "gold", "proxy_score",
-                "rank", "selected_n8", "selected_n16", "token_count", "completion",
+                "prompt_id",
+                "candidate_index",
+                "gold",
+                "proxy_score",
+                "rank",
+                "selected_n8",
+                "selected_n16",
+                "token_count",
+                "completion",
             ],
         )
         writer.writeheader()
@@ -299,7 +305,7 @@ def save_text_diagnostics(
                     }
                 )
 
-    weights = np.asarray(model.linear.kernel.value).reshape(-1)
+    weights = np.asarray(model.linear.kernel.get_value()).reshape(-1)
     weights_path = output_dir / "feature_weights.csv"
     with weights_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["feature", "weight", "idf"])
