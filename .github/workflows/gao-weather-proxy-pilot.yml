@@ -66,6 +66,10 @@ jobs:
                       f"{float(row['oracle_gold_mean']):.4f}"
                   )
           PY
+      - name: Diagnose candidate-level rankings and text
+        run: |
+          uv run --no-sync python devtools/gao_rank_diagnostics.py \
+            --run-dir runs/gao-weather/proxy-seed42
       - name: Preserve proxy results
         if: always()
         uses: actions/upload-artifact@v4
@@ -75,5 +79,8 @@ jobs:
             runs/gao-weather/proxy-seed42/best_of_n.csv
             runs/gao-weather/proxy-seed42/summary.json
             runs/gao-weather/proxy-seed42/history.json
+            runs/gao-weather/proxy-seed42/held_out_candidates.csv
+            runs/gao-weather/proxy-seed42/feature_weights.csv
+            runs/gao-weather/proxy-seed42/ranking_diagnostics.json
           if-no-files-found: warn
           retention-days: 7
