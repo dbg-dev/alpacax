@@ -285,7 +285,7 @@ def save_text_diagnostics(
         writer.writeheader()
         for prompt_id, items in sorted(test_rows.items()):
             features = np.stack([embeddings[(prompt_id, row.candidate_index)] for row in items])
-            scores = np.asarray(model(jnp.asarray(features))).reshape(-1)
+            scores = np.asarray(model(jnp.asarray(features))).reshape(-1)  # pyright: ignore[reportUnknownMemberType]
             order = np.argsort(-scores, kind="stable")
             ranks = np.empty(len(items), dtype=np.int32)
             ranks[order] = np.arange(1, len(items) + 1)
@@ -422,7 +422,8 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
             "output_dir": str(settings.output_dir),
         },
         "source": "cached frozen GPT-2 text completions",
-        "feature_type": f"training-only TF-IDF unigram + bigram ({settings.feature_source})",
+        "feature_type": "training-only TF-IDF unigram + bigram",
+        "feature_source": settings.feature_source,
         "gold": "binary exact target phrase in completion (not human quality)",
         "held_out_preference_accuracy": accuracy,
         "usable_train_prompts": usable_train,
