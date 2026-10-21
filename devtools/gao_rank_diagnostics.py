@@ -23,11 +23,7 @@ def auc_positive_negative(rows: list[dict[str, object]]) -> float | None:
     negatives = [float(r["proxy_score"]) for r in rows if int(r["gold"]) == 0]
     if not positives or not negatives:
         return None
-    correct = sum(
-        (1.0 if p > n else 0.5 if p == n else 0.0)
-        for p in positives
-        for n in negatives
-    )
+    correct = sum((1.0 if p > n else 0.5 if p == n else 0.0) for p in positives for n in negatives)
     return correct / (len(positives) * len(negatives))
 
 
@@ -120,13 +116,25 @@ def main() -> None:
             f"   {auc_str:>5}  {str(row['best_positive_rank']):>5}"
             f"  {row['n16_gold']}"
         )
-    print("\nOVERALL:", json.dumps(
-        {key: report[key] for key in (
-            "n_prompts", "prompts_with_both_labels", "mean_within_prompt_auc",
-            "pooled_within_prompt_auc", "success_n8", "success_n16",
-            "oracle_n16", "rain_feature"
-        )}, ensure_ascii=False
-    ))
+    print(
+        "\nOVERALL:",
+        json.dumps(
+            {
+                key: report[key]
+                for key in (
+                    "n_prompts",
+                    "prompts_with_both_labels",
+                    "mean_within_prompt_auc",
+                    "pooled_within_prompt_auc",
+                    "success_n8",
+                    "success_n16",
+                    "oracle_n16",
+                    "rain_feature",
+                )
+            },
+            ensure_ascii=False,
+        ),
+    )
     print("TOP POSITIVE WEIGHTS:", json.dumps(report["top_positive_weights"]))
     print("TOP NEGATIVE WEIGHTS:", json.dumps(report["top_negative_weights"]))
     print("\nSELECTED AND MISSED POSITIVE CONTINUATIONS:")
