@@ -159,32 +159,32 @@ candidates again.
 
 The original eight-prompt pilot above is retained for reproducibility. A new
 [24-prompt weather calibration set](gao-prompts.weather.jsonl) uses **one
-literal gold target, \`rain\`**, across 12 train, 4 validation and 8 test
-prompts. Unlike the previous arbitrary \`the\` / \`and\` assignments, the
+literal gold target, `rain`**, across 12 train, 4 validation and 8 test
+prompts. Unlike the previous arbitrary `the` / `and` assignments, the
 target is thematically related to each context. This is still a **lexical
 proxy objective**, not a human judgment of quality.
 
 Generate 16 frozen GPT-2 completions per prompt at 20 new tokens using a
 fresh output path:
 
-\`\`\`sh
+```sh
 uv run --extra train --extra huggingface --with 'transformers>=4.57,<5' \
   python -m alpacax.examples.gao_gpt2_candidates \
   --prompts-path docs/gao-prompts.weather.jsonl \
   --output-path runs/gao-weather/candidates.jsonl \
   --seed 42 --candidates-per-prompt 16 --max-new-tokens 20 --batch-size 4
-\`\`\`
+```
 
 **Before training a new proxy**, assess exact gold-label diversity:
 
-\`\`\`sh
+```sh
 python devtools/gao_gold_calibration.py \
   --cache-path runs/gao-weather/candidates.jsonl \
   --output-path runs/gao-weather/calibration.json
-\`\`\`
+```
 
-For each prompt with binary gold mean \`p\`, the report includes
-\`p(1-p)\` within-prompt variance and oracle headroom \`max(gold)-p\`.
+For each prompt with binary gold mean `p`, the report includes
+`p(1-p)` within-prompt variance and oracle headroom `max(gold)-p`.
 A prompt with all positives or all negatives has no oracle headroom and
 cannot support a meaningful best-of-N comparison. The summary records
 the number of mixed-label prompts separately for each split.
