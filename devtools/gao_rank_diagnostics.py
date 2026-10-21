@@ -12,9 +12,54 @@ import csv
 import json
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 
-def auc_positive_negative(rows: list[dict[str, object]]) -> float | None:
+class CandidateScore(TypedDict):
+    candidate_index: int
+    gold: int
+    proxy_score: float
+    rank: int
+    selected_n8: int
+    selected_n16: int
+    completion: str
+
+
+class FeatureWeight(TypedDict):
+    feature: str
+    weight: float
+
+
+class PromptRanking(TypedDict):
+    prompt_id: str
+    positive_count: int
+    candidate_count: int
+    auc: float | None
+    top_gold: int
+    n8_gold: int
+    n16_gold: int
+    best_positive_rank: int | None
+    top_score: float
+    best_positive_score: float | None
+    top_completion: str
+    best_positive_completion: str | None
+
+
+class RankingReport(TypedDict):
+    n_prompts: int
+    prompts_with_both_labels: int
+    mean_within_prompt_auc: float | None
+    pooled_within_prompt_auc: float | None
+    success_n8: int
+    success_n16: int
+    oracle_n16: int
+    rain_feature: FeatureWeight | None
+    top_positive_weights: list[FeatureWeight]
+    top_negative_weights: list[FeatureWeight]
+    prompts: list[PromptRanking]
+
+
+def auc_positive_negative(rows: list[CandidateScore]) -> float | None:
     """Probability a random gold-positive outranks a gold-negative.
 
     Ties receive half credit. Undefined for prompts with constant labels.
@@ -27,8 +72,8 @@ def auc_positive_negative(rows: list[dict[str, object]]) -> float | None:
     return correct / (len(positives) * len(negatives))
 
 
-def analyse(run_dir: Path) -> dict[str, object]:
-    by_prompt: dict[str, list[dict[str, object]]] = defaultdict(list)
+def analyse(run_dir: Path) -> RankingReport:
+    by_prompt: dict[str, list[CandidateScore]] = defaultdict(list)
     with (run_dir / "held_out_candidates.csv").open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             by_prompt[row["prompt_id"]].append(
@@ -43,7 +88,7 @@ def analyse(run_dir: Path) -> dict[str, object]:
                 }
             )
 
-    prompts: list[dict[str, object]] = []
+    prompts: list[PromptRanking] = []
     mixed_auc: list[float] = []
     correct_pairs = 0.0
     all_pairs = 0
@@ -78,7 +123,7 @@ def analyse(run_dir: Path) -> dict[str, object]:
             }
         )
 
-    weights = []
+    weights: list[FeatureWeight] = []
     with (run_dir / "feature_weights.csv").open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             weights.append({"feature": row["feature"], "weight": float(row["weight"])})
@@ -120,17 +165,14 @@ def main() -> None:
         "\nOVERALL:",
         json.dumps(
             {
-                key: report[key]
-                for key in (
-                    "n_prompts",
-                    "prompts_with_both_labels",
-                    "mean_within_prompt_auc",
-                    "pooled_within_prompt_auc",
-                    "success_n8",
-                    "success_n16",
-                    "oracle_n16",
-                    "rain_feature",
-                )
+                "n_prompts": report["n_prompts"],
+                "prompts_with_both_labels": report["prompts_with_both_labels"],
+                "mean_within_prompt_auc": report["mean_within_prompt_auc"],
+                "pooled_within_prompt_auc": report["pooled_within_prompt_auc"],
+                "success_n8": report["success_n8"],
+                "success_n16": report["success_n16"],
+                "oracle_n16": report["oracle_n16"],
+                "rain_feature": report["rain_feature"],
             },
             ensure_ascii=False,
         ),
