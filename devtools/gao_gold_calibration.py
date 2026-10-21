@@ -78,8 +78,7 @@ def inspect_cache(cache_path: Path) -> dict[str, Any]:
             "prompts": count,
             "mixed_prompts": sum(int(r["mixed"]) for r in rows),
             "mean_positive_rate": sum(float(r["positive_rate"]) for r in rows) / count,
-            "mean_within_prompt_variance": sum(float(r["gold_variance"]) for r in rows)
-            / count,
+            "mean_within_prompt_variance": sum(float(r["gold_variance"]) for r in rows) / count,
             "mean_oracle_headroom": sum(float(r["oracle_headroom"]) for r in rows) / count,
         }
 
@@ -89,10 +88,14 @@ def inspect_cache(cache_path: Path) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--cache-path", type=Path, default=Path("runs/gao-weather/candidates.jsonl")
+        "--cache-path",
+        type=Path,
+        default=Path("runs/gao-weather/candidates.jsonl"),
     )
     parser.add_argument(
-        "--output-path", type=Path, default=Path("runs/gao-weather/calibration.json")
+        "--output-path",
+        type=Path,
+        default=Path("runs/gao-weather/calibration.json"),
     )
     args = parser.parse_args()
     result = inspect_cache(args.cache_path)
