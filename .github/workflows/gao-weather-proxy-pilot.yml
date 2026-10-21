@@ -36,51 +36,99 @@ jobs:
           test -s runs/gao-weather/candidates.jsonl
           test -s runs/gao-weather/calibration.json
           sha256sum runs/gao-weather/candidates.jsonl
-      - name: Train independent Bradley-Terry proxy and run best-of-N
+      - name: Train two identical proxies with different feature sources
         run: |
-          uv run --no-sync python -m alpacax.examples.gao_text_best_of_n \
-            --cache-path runs/gao-weather/candidates.jsonl \
-            --output-dir runs/gao-weather/proxy-seed42 \
-            --seed 42 --max-features 256 --epochs 10
-      - name: Print held-out results and checks
+          for source in prompt_and_completion completion_only; do
+            uv run --no-sync python -m alpacax.examples.gao_text_best_of_n \
+              --cache-path runs/gao-weather/candidates.jsonl \
+              --output-dir "runs/gao-weather/$source" \
+              --feature-source "$source" \
+              --seed 42 --max-features 256 --epochs 10
+          done
+      - name: Diagnose held-out rankings for both models
+        run: |
+          for source in prompt_and_completion completion_only; do
+            uv run --no-sync python devtools/gao_rank_diagnostics.py \
+              --run-dir "runs/gao-weather/$source"
+          done
+      - name: Compare held-out AUC and best-of-N
         run: |
           python - <<'PY'
           import csv
           import json
           from pathlib import Path
 
-          root = Path("runs/gao-weather/proxy-seed42")
-          summary = json.loads((root / "summary.json").read_text())
-          print("Held-out preference accuracy:", summary["held_out_preference_accuracy"])
-          print("Usable training prompts:", summary["usable_train_prompts"])
-          print("Usable validation prompts:", summary["usable_validation_prompts"])
-          print("Held-out test prompts:", summary["test_prompt_count"])
-          print("Checkpoint restoration match:", summary["checkpoint_restoration_match"])
-          print("N | proxy | selected gold | random gold | oracle gold")
-          with (root / "best_of_n.csv").open(newline="") as handle:
-              for row in csv.DictReader(handle):
-                  print(
-                      f"{row['n']:>2} | {float(row['proxy_mean']):.4f} | "
-                      f"{float(row['gold_mean']):.4f} | "
-                      f"{float(row['random_gold_mean']):.4f} | "
-                      f"{float(row['oracle_gold_mean']):.4f}"
-                  )
+          base = Path("runs/gao-weather")
+          names = ("prompt_and_completion", "completion_only")
+          models = {}
+          for name in names:
+              root = base / name
+              summary = json.loads((root / "summary.json").read_text())
+              rank = json.loads((root / "ranking_diagnostics.json").read_text())
+              with (root / "best_of_n.csv").open(newline="") as handle:
+                  bon = {int(row["n"]): row for row in csv.DictReader(handle)}
+              models[name] = (summary, rank, bon)
+
+          print("MODEL | VALIDATION ACC | WITHIN-PROMPT AUC | GOLD@8 | GOLD@16 | ORACLE@16")
+          for name, (summary, rank, bon) in models.items():
+              print(
+                  f"{name} | {summary['held_out_preference_accuracy']:.4f} | "
+                  f"{rank['mean_within_prompt_auc']:.4f} | "
+                  f"{float(bon[8]['gold_mean']):.4f} | "
+                  f"{float(bon[16]['gold_mean']):.4f} | "
+                  f"{float(bon[16]['oracle_gold_mean']):.4f}"
+              )
+              print("rain coefficient:", rank["rain_feature"])
+              print("per-prompt ranks and selected gold:")
+              for item in rank["prompts"]:
+                  print(" ", item["prompt_id"], "rank", item["best_positive_rank"],
+                        "N16 gold", item["n16_gold"])
+
+          print("N | Random gold | Oracle gold | Prompt+completion gold | Completion-only gold")
+          a, b = models[names[0]][2], models[names[1]][2]
+          comparison_rows = []
+          for n in sorted(a):
+              assert abs(float(a[n]["random_gold_mean"]) - float(b[n]["random_gold_mean"])) < 1e-9
+              assert abs(float(a[n]["oracle_gold_mean"]) - float(b[n]["oracle_gold_mean"])) < 1e-9
+              row = {
+                  "n": n,
+                  "random_gold": float(a[n]["random_gold_mean"]),
+                  "oracle_gold": float(a[n]["oracle_gold_mean"]),
+                  "prompt_and_completion_gold": float(a[n]["gold_mean"]),
+                  "completion_only_gold": float(b[n]["gold_mean"]),
+              }
+              comparison_rows.append(row)
+              print(" | ".join(str(row[k]) for k in row))
+          assert models[names[0]][0]["settings"]["feature_source"] == names[0]
+          assert models[names[1]][0]["settings"]["feature_source"] == names[1]
+          (base / "ab_comparison.json").write_text(
+              json.dumps({"models": {
+                  name: {
+                      "validation_accuracy": models[name][0]["held_out_preference_accuracy"],
+                      "ranking": models[name][1],
+                  }
+                  for name in names
+              }, "bon": comparison_rows}, indent=2) + "\n"
+          )
           PY
-      - name: Diagnose candidate-level rankings and text
-        run: |
-          uv run --no-sync python devtools/gao_rank_diagnostics.py \
-            --run-dir runs/gao-weather/proxy-seed42
-      - name: Preserve proxy results
+      - name: Preserve paired A/B results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gao-weather-proxy-seed42
+          name: gao-weather-ab-comparison-seed42
           path: |
-            runs/gao-weather/proxy-seed42/best_of_n.csv
-            runs/gao-weather/proxy-seed42/summary.json
-            runs/gao-weather/proxy-seed42/history.json
-            runs/gao-weather/proxy-seed42/held_out_candidates.csv
-            runs/gao-weather/proxy-seed42/feature_weights.csv
-            runs/gao-weather/proxy-seed42/ranking_diagnostics.json
+            runs/gao-weather/prompt_and_completion/best_of_n.csv
+            runs/gao-weather/prompt_and_completion/summary.json
+            runs/gao-weather/prompt_and_completion/history.json
+            runs/gao-weather/prompt_and_completion/held_out_candidates.csv
+            runs/gao-weather/prompt_and_completion/feature_weights.csv
+            runs/gao-weather/prompt_and_completion/ranking_diagnostics.json
+            runs/gao-weather/completion_only/best_of_n.csv
+            runs/gao-weather/completion_only/summary.json
+            runs/gao-weather/completion_only/history.json
+            runs/gao-weather/completion_only/held_out_candidates.csv
+            runs/gao-weather/completion_only/feature_weights.csv
+            runs/gao-weather/completion_only/ranking_diagnostics.json
+            runs/gao-weather/ab_comparison.json
           if-no-files-found: warn
           retention-days: 7
