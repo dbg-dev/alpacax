@@ -26,8 +26,6 @@ jobs:
       - run: uv python install 3.12
       - name: Install training dependencies
         run: uv sync --extra train
-      - name: Inspect formatting differences
-        run: uv run --no-sync ruff format --diff src/alpacax/examples/gao_text_best_of_n.py devtools/gao_rank_diagnostics.py || true
       - name: Reuse the fixed, calibrated 384-completion cache
         env:
           GH_TOKEN: ${{ github.token }}
