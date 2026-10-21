@@ -19,7 +19,7 @@ import re
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import override
+from typing import Literal, override
 
 import jax.numpy as jnp
 import numpy as np
@@ -61,6 +61,7 @@ class Settings:
     output_dir: Path = Path("runs/gao-text-42")
     seed: int = 42
     max_features: int = 256
+    feature_source: Literal["prompt_and_completion", "completion_only"] = "prompt_and_completion"
     train_pairs_per_prompt: int = 16
     validation_pairs_per_prompt: int = 8
     batch_size: int = 32
@@ -323,7 +324,12 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
         raise FileExistsError(f"Run directory already contains checkpoints: {checkpoint_dir}")
     settings.output_dir.mkdir(parents=True, exist_ok=True)
 
-    texts = [f"{row.prompt}\n{row.completion}" for row in rows]
+    texts = [
+        f"{row.prompt}\n{row.completion}"
+        if settings.feature_source == "prompt_and_completion"
+        else row.completion
+        for row in rows
+    ]
     training_texts = [text for text, row in zip(texts, rows, strict=True) if row.split == "train"]
     featurizer = TfidfFeatures(settings.max_features)
     featurizer.fit(training_texts)  # A test completion must NEVER enter fit.
@@ -416,7 +422,7 @@ def run_study(settings: Settings) -> tuple[list[dict[str, float | int]], dict[st
             "output_dir": str(settings.output_dir),
         },
         "source": "cached frozen GPT-2 text completions",
-        "feature_type": "training-only TF-IDF unigram + bigram",
+        "feature_type": f"training-only TF-IDF unigram + bigram ({settings.feature_source})",
         "gold": "binary exact target phrase in completion (not human quality)",
         "held_out_preference_accuracy": accuracy,
         "usable_train_prompts": usable_train,
