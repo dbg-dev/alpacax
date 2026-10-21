@@ -1,0 +1,79 @@
+name: Gao weather best-of-N pilot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/gao-weather-proxy-pilot.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  train-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.1'
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv python install 3.12
+      - name: Install training dependencies
+        run: uv sync --extra train
+      - name: Reuse the fixed, calibrated 384-completion cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p runs/gao-weather
+          gh run download 39615342750 --repo dbg-dev/alpacax \
+            --name gao-weather-calibration --dir runs/gao-weather
+          test -s runs/gao-weather/candidates.jsonl
+          test -s runs/gao-weather/calibration.json
+          sha256sum runs/gao-weather/candidates.jsonl
+      - name: Train independent Bradley-Terry proxy and run best-of-N
+        run: |
+          uv run --no-sync python -m alpacax.examples.gao_text_best_of_n \
+            --cache-path runs/gao-weather/candidates.jsonl \
+            --output-dir runs/gao-weather/proxy-seed42 \
+            --seed 42 --max-features 256 --epochs 10
+      - name: Print held-out results and checks
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          root = Path("runs/gao-weather/proxy-seed42")
+          summary = json.loads((root / "summary.json").read_text())
+          print("Held-out preference accuracy:", summary["held_out_preference_accuracy"])
+          print("Usable training prompts:", summary["usable_train_prompts"])
+          print("Usable validation prompts:", summary["usable_validation_prompts"])
+          print("Held-out test prompts:", summary["test_prompt_count"])
+          print("Checkpoint restoration match:", summary["checkpoint_restoration_match"])
+          print("N | proxy | selected gold | random gold | oracle gold")
+          with (root / "best_of_n.csv").open(newline="") as handle:
+              for row in csv.DictReader(handle):
+                  print(
+                      f"{row['n']:>2} | {float(row['proxy_mean']):.4f} | "
+                      f"{float(row['gold_mean']):.4f} | "
+                      f"{float(row['random_gold_mean']):.4f} | "
+                      f"{float(row['oracle_gold_mean']):.4f}"
+                  )
+          PY
+      - name: Preserve proxy results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gao-weather-proxy-seed42
+          path: |
+            runs/gao-weather/proxy-seed42/best_of_n.csv
+            runs/gao-weather/proxy-seed42/summary.json
+            runs/gao-weather/proxy-seed42/history.json
+          if-no-files-found: warn
+          retention-days: 7
