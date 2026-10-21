@@ -3,6 +3,7 @@
 Uses the same case-insensitive, word-bounded literal target test as
 gao_text_best_of_n.gold_binary. No model fitting and no API calls.
 """
+
 from __future__ import annotations
 
 import argparse
