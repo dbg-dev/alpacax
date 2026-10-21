@@ -38,8 +38,6 @@ jobs:
           test -s runs/gao-weather/candidates.jsonl
           test -s runs/gao-weather/calibration.json
           sha256sum runs/gao-weather/candidates.jsonl
-      - name: Inspect Ruff formatting
-        run: uv run --no-sync --with ruff==0.15.12 ruff format --diff devtools/gao_epoch_sweep.py || true
       - name: Train six duration-controlled Bradley-Terry runs
         run: |
           for source in prompt_and_completion completion_only; do
