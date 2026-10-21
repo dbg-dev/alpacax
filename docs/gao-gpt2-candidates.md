@@ -28,7 +28,10 @@ has exactly these fields:
 Use disjoint **prompt IDs** for `train`, `validation`, and `test`.
 The `target` is the literal, case-insensitive phrase to find in the
 **generated continuation only**. A match is a gold score of 1, otherwise 0.
-Different train/validation/test prompts are necessary to avoid leakage.
+Different train/validation/test prompts are necessary to avoid leakage, so
+the loaders reject the same prompt text appearing in more than one split
+(compared after case-folding and whitespace normalization, even under
+different `prompt_id`s). Near-duplicates and paraphrases are not detected.
 
 ## 2. Generate cached candidates with the pretrained local GPT-2
 

@@ -28,6 +28,7 @@ import tyro
 from flax import nnx
 from jax import Array
 
+from alpacax.examples._prompt_isolation import check_prompt_isolation
 from alpacax.examples.gao_proxy_sanity import (
     BEST_OF_N,
     HistoryLogger,
@@ -109,7 +110,10 @@ def load_cache(path: Path) -> list[Candidate]:
             prompts[row.prompt_id] = descriptor
             result.append(row)
     if {r.split for r in result} != {"train", "validation", "test"}:
-        raise ValueError("Cache must contain disjoint train, validation and test prompts")
+        raise ValueError("Cache must contain train, validation and test prompts")
+    check_prompt_isolation(
+        (prompt_id, split, prompt) for prompt_id, (split, prompt, _) in prompts.items()
+    )
     return result
 
 

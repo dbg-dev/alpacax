@@ -7,4 +7,4 @@ def count_parameters(model: Module) -> int:
 
     params = state(model, Param)  # pyright: ignore[reportUnknownVariableType]
     leaves = tree.leaves(params)
-    return sum(x.value.size for x in leaves)
+    return sum(x.size for x in leaves)

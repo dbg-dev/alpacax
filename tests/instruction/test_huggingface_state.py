@@ -48,10 +48,10 @@ def test_prepare_and_rebuild_preserves_non_array_state() -> None:
     flattened[("weight",)] = _array([3.0, 4.0])
     restored = rebuild_model(graphdef, flattened)
     assert isinstance(restored, MixedStateModel)
-    assert restored.counter.value == 7
-    assert jnp.array_equal(restored.buffer.value, _array([99.0]))
-    assert jnp.array_equal(restored.weight.value, _array([3.0, 4.0]))
-    assert jnp.array_equal(model.weight.value, _array([1.0, 2.0]))
+    assert restored.counter.get_value() == 7
+    assert jnp.array_equal(restored.buffer.get_value(), _array([99.0]))
+    assert jnp.array_equal(restored.weight.get_value(), _array([3.0, 4.0]))
+    assert jnp.array_equal(model.weight.get_value(), _array([1.0, 2.0]))
 
 
 class FakeTensor:
@@ -96,9 +96,9 @@ def test_hf_strict_coverage_skips_non_array_nnx_state() -> None:
     assert isinstance(result, Success)
     mapped = result.unwrap()
     assert isinstance(mapped, MixedStateModel)
-    assert jnp.array_equal(mapped.weight.value, _array([3.0, 4.0]))
-    assert mapped.counter.value == 7
-    assert jnp.array_equal(mapped.buffer.value, _array([99.0]))
+    assert jnp.array_equal(mapped.weight.get_value(), _array([3.0, 4.0]))
+    assert mapped.counter.get_value() == 7
+    assert jnp.array_equal(mapped.buffer.get_value(), _array([99.0]))
 
 
 def test_hf_strict_coverage_reports_unused_tied_weight_alias() -> None:
@@ -121,7 +121,7 @@ def test_hf_strict_coverage_reports_unused_tied_weight_alias() -> None:
         allow_unused_src=("lm_head.weight",),
     )
     assert isinstance(mapped, MixedStateModel)
-    assert jnp.array_equal(mapped.weight.value, _array([3.0, 4.0]))
+    assert jnp.array_equal(mapped.weight.get_value(), _array([3.0, 4.0]))
 
 
 def test_hf_strict_coverage_reports_unmapped_array_target() -> None:
@@ -137,6 +137,6 @@ def test_hf_strict_coverage_reports_unmapped_array_target() -> None:
 
     assert isinstance(result, Failure)
     assert result.failure() == [MappingError(kind="unmapped_dst", dst=("random_init",))]
-    assert jnp.array_equal(original.weight.value, _array([1.0, 2.0]))
+    assert jnp.array_equal(original.weight.get_value(), _array([1.0, 2.0]))
     with pytest.raises(ValueError, match="unmapped destination parameter"):
         model_mapper_or_raise(hf, original, [rule], strict=True)

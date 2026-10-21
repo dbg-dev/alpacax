@@ -27,6 +27,7 @@ import tyro
 from flax import nnx
 from jax import Array
 
+from alpacax.examples._prompt_isolation import check_prompt_isolation
 from alpacax.integrations.huggingface import model_mapper_or_raise
 from alpacax.models.gpt2.config import (
     AttentionConfig,
@@ -91,6 +92,7 @@ def load_prompts(path: Path) -> list[Prompt]:
         raise ValueError("Prompt file is empty")
     if frozenset(p.split for p in prompts) != SPLITS:
         raise ValueError("Provide separate train, validation and test prompt_ids")
+    check_prompt_isolation((p.prompt_id, p.split, p.prompt) for p in prompts)
     return prompts
 
 

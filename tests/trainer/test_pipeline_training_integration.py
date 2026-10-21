@@ -82,7 +82,7 @@ def test_pipeline_output_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch) 
         loss_fn=partial(masked_cross_entropy_loss, ignore_index=config.ignore_index),
     )
     run(make_runner(train=train, max_steps=2))
-    assert int(cast(nnx.Variable[Array], optimizer.step).value) == 2
+    assert int(cast(nnx.Variable[Array], optimizer.step).get_value()) == 2
     # Eval and subsequent epochs can request a fresh iterator.
     assert len(list(loader)) == 2
 
@@ -149,4 +149,4 @@ def test_unpadded_pipeline_trains_real_nnx_model(monkeypatch: pytest.MonkeyPatch
         loss_fn=partial(masked_cross_entropy_loss, ignore_index=config.ignore_index),
     )
     run(make_runner(train=train, max_steps=2))
-    assert int(cast(nnx.Variable[Array], optimizer.step).value) == 2
+    assert int(cast(nnx.Variable[Array], optimizer.step).get_value()) == 2

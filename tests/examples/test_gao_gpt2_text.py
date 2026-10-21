@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from flax import nnx
 
+from alpacax.examples._prompt_isolation import check_prompt_isolation
 from alpacax.examples.gao_gpt2_candidates import (
     Settings as CacheSettings,
 )
@@ -104,6 +105,13 @@ def test_tfidf_uses_train_only() -> None:
     assert np.all(vectors == 0)
 
 
+_SPLIT_PROMPTS = {
+    "train": "At the harbor: ",
+    "validation": "By the quay: ",
+    "test": "Near the pier: ",
+}
+
+
 def _cache(tmp_path: Path) -> Path:
     cache = tmp_path / "candidates.jsonl"
     content: list[dict[str, object]] = []
@@ -115,7 +123,7 @@ def _cache(tmp_path: Path) -> Path:
                 {
                     "prompt_id": f"{split}-p0",
                     "split": split,
-                    "prompt": "At the harbor: ",
+                    "prompt": _SPLIT_PROMPTS[split],
                     "target": "the",
                     "candidate_index": candidate_id,
                     "completion": completion,
@@ -161,3 +169,72 @@ def test_missing_gold_preference_pairs_fail_loudly(tmp_path: Path) -> None:
     cache.write_text("\n".join(json.dumps(row) for row in records) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="No informative gold preference pairs"):
         run_study(StudySettings(cache_path=cache, output_dir=tmp_path / "results", epochs=1))
+
+
+def _write_prompts(path: Path, rows: list[tuple[str, str, str]]) -> None:
+    values = [
+        {"prompt_id": prompt_id, "split": split, "prompt": text, "target": "the"}
+        for prompt_id, split, text in rows
+    ]
+    path.write_text("\n".join(json.dumps(v) for v in values), encoding="utf-8")
+
+
+def test_load_prompts_rejects_same_text_in_different_splits(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.jsonl"
+    _write_prompts(
+        path,
+        [
+            ("train-1", "train", "At the harbor: "),
+            ("validation-1", "validation", "By the quay: "),
+            # Different ID, but the same text as train-1 apart from case and spacing.
+            ("test-1", "test", "  at the   HARBOR:"),
+        ],
+    )
+    with pytest.raises(ValueError, match=r"'train-1' \(train\) and 'test-1' \(test\)"):
+        load_prompts(path)
+
+
+def test_load_prompts_allows_repeated_text_within_one_split(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.jsonl"
+    _write_prompts(
+        path,
+        [
+            ("train-1", "train", "At the harbor: "),
+            ("train-2", "train", "At the harbor: "),
+            ("validation-1", "validation", "By the quay: "),
+            ("test-1", "test", "Near the pier: "),
+        ],
+    )
+    assert len(load_prompts(path)) == 4
+
+
+def test_shipped_example_prompts_still_load() -> None:
+    example = Path(__file__).parents[2] / "docs" / "gao-prompts.example.jsonl"
+    assert len(load_prompts(example)) > 0
+
+
+def test_load_cache_rejects_same_prompt_text_in_different_splits(tmp_path: Path) -> None:
+    cache = _cache(tmp_path)
+    records = [cast(dict[str, object], json.loads(row)) for row in cache.read_text().splitlines()]
+    for row in records:
+        row["prompt"] = _SPLIT_PROMPTS["train"]  # test/validation now reuse train's text
+    cache.write_text("\n".join(json.dumps(row) for row in records) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Prompt text appears in more than one split"):
+        load_cache(cache)
+
+
+def test_load_cache_missing_split_message_is_accurate(tmp_path: Path) -> None:
+    cache = _cache(tmp_path)
+    records = [cast(dict[str, object], json.loads(row)) for row in cache.read_text().splitlines()]
+    kept = [row for row in records if row["split"] != "test"]
+    cache.write_text("\n".join(json.dumps(row) for row in kept) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="must contain train, validation and test"):
+        load_cache(cache)
+
+
+def test_prompt_isolation_reports_first_clashes_and_counts_the_rest() -> None:
+    entries = [(f"train-{i}", "train", f"prompt {i}") for i in range(8)]
+    entries += [(f"test-{i}", "test", f"prompt {i}") for i in range(8)]
+    with pytest.raises(ValueError, match=r"\(\+3 more\)") as info:
+        check_prompt_isolation(entries)
+    assert "'train-0' (train) and 'test-0' (test)" in str(info.value)

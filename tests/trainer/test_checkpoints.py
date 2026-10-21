@@ -45,7 +45,7 @@ def test_checkpoint_round_trip_restores_nnx_state_and_step(tmp_path: Path) -> No
     train_once(model, optimizer)
 
     saved_kernel = _array(model.kernel[...])
-    saved_optimizer_step = int(cast(nnx.Variable[Array], optimizer.step).value)
+    saved_optimizer_step = int(cast(nnx.Variable[Array], optimizer.step).get_value())
 
     with TrainerCheckpointer(tmp_path) as checkpointer:
         checkpointer.save(
@@ -71,7 +71,7 @@ def test_checkpoint_round_trip_restores_nnx_state_and_step(tmp_path: Path) -> No
 
     assert resumed_step == 7
     assert bool(jnp.array_equal(model.kernel[...], saved_kernel))
-    assert int(cast(nnx.Variable[Array], optimizer.step).value) == saved_optimizer_step
+    assert int(cast(nnx.Variable[Array], optimizer.step).get_value()) == saved_optimizer_step
 
 
 def test_checkpointer_closes_on_exception(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
