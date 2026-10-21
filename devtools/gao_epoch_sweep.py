@@ -94,7 +94,9 @@ def analyse(base: Path) -> list[SweepRow]:
         raise ValueError("Gold oracle differs across supposedly identical candidate pools")
     if any(r["train_pairs_per_prompt"] != rows[0]["train_pairs_per_prompt"] for r in rows):
         raise ValueError("Training-pair budgets differ")
-    if any(r["validation_pairs_per_prompt"] != rows[0]["validation_pairs_per_prompt"] for r in rows):
+    if any(
+        r["validation_pairs_per_prompt"] != rows[0]["validation_pairs_per_prompt"] for r in rows
+    ):
         raise ValueError("Validation-pair budgets differ")
     return rows
 
@@ -130,7 +132,9 @@ def main() -> None:
         + "\n",
         encoding="utf-8",
     )
-    print("FEATURES | EPOCHS | TRAIN LOSS | VALID LOSS | VALID ACC | TEST AUC | GOLD@16 | RAIN/NORM")
+    print(
+        "FEATURES | EPOCHS | TRAIN LOSS | VALID LOSS | VALID ACC | TEST AUC | GOLD@16 | RAIN/NORM"
+    )
     for r in rows:
         print(
             f"{r['feature_source']:<22} {r['epochs']:>3} "
