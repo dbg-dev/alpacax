@@ -14,7 +14,6 @@ import math
 from pathlib import Path
 from typing import TypedDict
 
-
 FEATURE_SOURCES = ("prompt_and_completion", "completion_only")
 EPOCHS = (10, 50, 100)
 
